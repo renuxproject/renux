@@ -805,7 +805,8 @@ install(const char *from_name, const char *to_name, u_long fset, u_int flags)
 	struct timespec tsb[2];
 	int devnull, files_match, from_fd, serrno, stripped, target;
 	int temp_fd, to_fd;
-	char backup[MAXPATHLEN], *p, pathbuf[MAXPATHLEN], tempfile[MAXPATHLEN];
+	char backup[MAXPATHLEN], pathbuf[MAXPATHLEN], tempfile[MAXPATHLEN];
+	const char *p;
 	char *digestresult;
 
 	digestresult = NULL;
