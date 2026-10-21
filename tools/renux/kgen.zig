@@ -17,6 +17,11 @@
 //                            nm -D SO | awk '/PAT/{printf "#define MACRO 0x%s\n",$1}'
 //   vers OUT SRCTOP IDENT ZIG
 //                            sys/conf/newvers.sh -R, without version control
+//   efi-pe ELF OUT EPOCH SECTION...
+//                            elfcopy -j SECTION... --output-target=efi-app-x86_64
+//   check-undefined ELF OUT  nm ELF | grep ' U ' finds nothing; OUT is ELF
+//   stand-vers VERSION OUT NAME MACHINE
+//                            stand/common/newvers.sh -r VERSION NAME MACHINE
 //   in DIR PROG ARG...       run PROG in DIR (for generators that write to .)
 
 const std = @import("std");
@@ -385,6 +390,192 @@ fn vdsoOffsets(so: []const u8, out_path: []const u8, rules: []const [:0]const u8
     writeFile(out_path, out.items);
 }
 
+// --- ELF to PE, for EFI ----------------------------------------------------
+
+const SHT_NOBITS = 8;
+const SHF_WRITE = 0x1;
+const SHF_EXECINSTR = 0x4;
+
+/// elfcopy -j SECTION... --output-target=efi-app-x86_64 IN OUT, as
+/// contrib/elftoolchain/elfcopy/pe.c and libpe write it: each section kept
+/// becomes a PE section at its address; the image is not relocated by the
+/// firmware, the loader relocates itself.
+fn efiPe(in_path: []const u8, out_path: []const u8, epoch: []const u8, keep: []const [:0]const u8) void {
+    const e = Elf.open(in_path);
+    if (!e.is64) fatal("{s}: not ELF64", .{in_path});
+    const filealign: u32 = 0x200;
+    const secalign: u32 = 0x1000;
+
+    var sections: std.ArrayList(Elf.Section) = .empty;
+    for (0..e.sectionCount()) |i| {
+        const s = e.section(i);
+        for (keep) |k| if (std.mem.eql(u8, s.name, k)) {
+            sections.append(gpa, s) catch @panic("OOM");
+            break;
+        };
+    }
+
+    // The optional header's sizes and the image's extent.
+    var textbase: u32 = 0;
+    var textsize: u32 = 0;
+    var datasize: u32 = 0;
+    var bsssize: u32 = 0;
+    var rvamax: u64 = 0;
+    var reloc: ?Elf.Section = null;
+    for (sections.items) |s| {
+        if (std.mem.eql(u8, s.name, ".text")) {
+            textbase = @intCast(s.addr);
+            textsize = @intCast(std.mem.alignForward(u64, s.size, filealign));
+        } else if (s.type == SHT_NOBITS) {
+            bsssize += @intCast(std.mem.alignForward(u64, s.size, filealign));
+        } else if (s.flags & SHF_ALLOC != 0) {
+            datasize += @intCast(std.mem.alignForward(u64, s.size, filealign));
+        }
+        if (std.mem.startsWith(u8, s.name, ".reloc")) reloc = s;
+        rvamax = @max(rvamax, s.addr + s.size);
+    }
+
+    const nsec: u32 = @intCast(sections.items.len);
+    const coff_at = 0x80 + 4;
+    const optsize = 240;
+    const headers = coff_at + 20 + optsize + nsec * 40;
+    const hdrsize = std.mem.alignForward(u32, headers, filealign);
+
+    var out: std.ArrayList(u8) = .empty;
+    const w = struct {
+        fn n(o: *std.ArrayList(u8), comptime T: type, v: T) void {
+            var buf: [@sizeOf(T)]u8 = undefined;
+            std.mem.writeInt(T, &buf, v, .little);
+            o.appendSlice(gpa, &buf) catch @panic("OOM");
+        }
+        fn pad(o: *std.ArrayList(u8), to: usize) void {
+            o.appendNTimes(gpa, 0, to - o.items.len) catch @panic("OOM");
+        }
+    };
+
+    // MS-DOS header and stub (libpe's init_dos_header and msdos_stub).
+    out.appendSlice(gpa, "MZ") catch @panic("OOM");
+    for ([_]u16{ 144, 3, 0, 4, 0, 65535, 0, 184, 0, 0, 0, 0x40, 0 }) |v| w.n(&out, u16, v);
+    w.pad(&out, 0x3c);
+    w.n(&out, u32, 0x80);
+    out.appendSlice(gpa, "\x0e\x1f\xba\x0e\x00\xb4\x09\xcd\x21\xb8\x01\x4c\xcd\x21This program cannot be run in DOS mode.\r\r\n$") catch @panic("OOM");
+    w.pad(&out, 0x80);
+
+    // PE signature and COFF header.
+    out.appendSlice(gpa, "PE\x00\x00") catch @panic("OOM");
+    w.n(&out, u16, 0x8664); // IMAGE_FILE_MACHINE_AMD64
+    w.n(&out, u16, @intCast(nsec));
+    w.n(&out, u32, std.fmt.parseInt(u32, epoch, 10) catch fatal("bad epoch {s}", .{epoch}));
+    w.n(&out, u32, 0);
+    w.n(&out, u32, 0);
+    w.n(&out, u16, optsize);
+    // EXECUTABLE_IMAGE | LINE_NUMS_STRIPPED | LOCAL_SYMS_STRIPPED |
+    // LARGE_ADDRESS_AWARE, and RELOCS_STRIPPED without a .reloc.
+    w.n(&out, u16, 0x0002 | 0x0004 | 0x0008 | 0x0020 | @as(u16, if (reloc == null) 0x0001 else 0));
+
+    // Optional header, PE32+.
+    w.n(&out, u16, 0x20b);
+    out.appendSlice(gpa, &.{ 2, 22 }) catch @panic("OOM");
+    w.n(&out, u32, textsize);
+    w.n(&out, u32, datasize);
+    w.n(&out, u32, bsssize);
+    w.n(&out, u32, @intCast(e.word(0x18))); // e_entry
+    w.n(&out, u32, textbase);
+    w.n(&out, u64, 0); // ImageBase
+    w.n(&out, u32, secalign);
+    w.n(&out, u32, filealign);
+    for (0..6) |_| w.n(&out, u16, 0); // OS, image and subsystem versions
+    w.n(&out, u32, 0); // Win32VersionValue
+    w.n(&out, u32, std.mem.alignForward(u32, @intCast(rvamax), secalign));
+    w.n(&out, u32, hdrsize);
+    w.n(&out, u32, 0); // CheckSum
+    w.n(&out, u16, 10); // IMAGE_SUBSYSTEM_EFI_APPLICATION
+    w.n(&out, u16, 0);
+    for (0..4) |_| w.n(&out, u64, 0); // stack and heap
+    w.n(&out, u32, 0); // LoaderFlags
+    w.n(&out, u32, 16); // NumberOfRvaAndSizes
+    for (0..16) |i| {
+        if (i == 5 and reloc != null) { // IMAGE_DIRECTORY_ENTRY_BASERELOC
+            w.n(&out, u32, @intCast(reloc.?.addr));
+            w.n(&out, u32, @intCast(reloc.?.size));
+        } else {
+            w.n(&out, u64, 0);
+        }
+    }
+
+    // Section headers; the contents follow the headers in order.
+    var rawptr: u32 = hdrsize;
+    for (sections.items) |s| {
+        var name: [8]u8 = @splat(0);
+        @memcpy(name[0..@min(8, s.name.len)], s.name[0..@min(8, s.name.len)]);
+        out.appendSlice(gpa, &name) catch @panic("OOM");
+        w.n(&out, u32, @intCast(s.size));
+        w.n(&out, u32, @intCast(s.addr));
+        const nobits = s.type == SHT_NOBITS;
+        const rawsize: u32 = if (nobits) 0 else std.mem.alignForward(u32, @intCast(s.size), filealign);
+        w.n(&out, u32, rawsize);
+        w.n(&out, u32, if (rawsize == 0) 0 else rawptr);
+        w.n(&out, u32, 0);
+        w.n(&out, u32, 0);
+        w.n(&out, u16, 0);
+        w.n(&out, u16, 0);
+        var ch: u32 = 0x40000000; // MEM_READ
+        if (nobits) ch |= 0x80; // CNT_UNINITIALIZED_DATA
+        if (s.flags & SHF_WRITE != 0) ch |= 0x80000000;
+        if (s.flags & SHF_EXECINSTR != 0) ch |= 0x20000000 | 0x20;
+        if (s.flags & SHF_ALLOC != 0 and ch & 0xf0 == 0) ch |= 0x40;
+        if (std.mem.eql(u8, s.name, ".reloc")) ch |= 0x02000000;
+        w.n(&out, u32, ch);
+        rawptr += rawsize;
+    }
+    w.pad(&out, hdrsize);
+    for (sections.items) |s| {
+        if (s.type == SHT_NOBITS) continue;
+        out.appendSlice(gpa, e.contents(s)) catch @panic("OOM");
+        w.pad(&out, std.mem.alignForward(usize, out.items.len, filealign));
+    }
+    writeFile(out_path, out.items);
+}
+
+/// `nm ELF | grep ' U '` must find nothing: the loader cannot resolve
+/// symbols at run time.  OUT is ELF.
+fn checkUndefined(elf: []const u8, out_path: []const u8) void {
+    const e = Elf.open(elf);
+    var bad = false;
+    for (nmSymbols(e, SHT_SYMTAB)) |s| if (s.shndx == SHN_UNDEF) {
+        std.debug.print("{s}: undefined symbol {s}\n", .{ elf, s.name });
+        bad = true;
+    };
+    if (bad) std.process.exit(1);
+    writeFile(out_path, e.data);
+}
+
+// --- The loader's vers.c ---------------------------------------------------
+
+/// stand/common/newvers.sh -r VERSION_FILE NAME MACHINE: the loader's
+/// version, without build metadata.
+fn standVers(out_path: []const u8, version_file: []const u8, name: []const u8, machine: []const u8) void {
+    // The first "N.N:" line of the version file.
+    var rev: []const u8 = "";
+    var lines = std.mem.splitScalar(u8, readFile(version_file), '\n');
+    while (lines.next()) |line| {
+        const colon = std.mem.indexOfScalar(u8, line, ':') orelse continue;
+        const r = line[0..colon];
+        const dot = std.mem.indexOfScalar(u8, r, '.') orelse continue;
+        if (dot != 1 or !std.ascii.isDigit(r[0]) or r.len < 3) continue;
+        for (r[2..]) |c| if (!std.ascii.isDigit(c)) break;
+        rev = r;
+        break;
+    }
+    if (rev.len == 0) fatal("{s}: no revision", .{version_file});
+    const dot = std.mem.indexOfScalar(u8, rev, '.').?;
+    writeFile(out_path, std.fmt.allocPrint(gpa,
+        \\char bootprog_info[] = "FreeBSD/{s} {s}, Revision {s}\n";
+        \\unsigned bootprog_rev = {s} * 1000 + {s};
+        \\
+    , .{ machine, name, rev, rev[0..dot], rev[dot + 1 ..] }) catch @panic("OOM"));
+}
+
 // --- vers.c ----------------------------------------------------------------
 
 /// The value of NAME="..." in a shell script.
@@ -512,6 +703,9 @@ pub fn main(init: std.process.Init) void {
     if (eql(u8, cmd, "vdso-check") and a.len == 2) return vdsoCheck(a[0], a[1]);
     if (eql(u8, cmd, "vdso-offsets") and a.len >= 3) return vdsoOffsets(a[0], a[1], a[2..]);
     if (eql(u8, cmd, "vers") and a.len == 4) return vers(a[0], a[1], a[2], a[3]);
+    if (eql(u8, cmd, "efi-pe") and a.len >= 4) return efiPe(a[0], a[1], a[2], a[3..]);
+    if (eql(u8, cmd, "check-undefined") and a.len == 2) return checkUndefined(a[0], a[1]);
+    if (eql(u8, cmd, "stand-vers") and a.len == 4) return standVers(a[1], a[0], a[2], a[3]);
     if (eql(u8, cmd, "in") and a.len >= 2) return runIn(a[0], a[1..]);
     fatal("unknown command or wrong arguments: {s}", .{cmd});
 }

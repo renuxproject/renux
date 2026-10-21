@@ -4,8 +4,9 @@
 //
 // hosttools.zig - the programs the build runs on the host, built by Zig
 // from this tree as usr.bin/ builds them: yacc (contrib/byacc), awk
-// (contrib/one-true-awk) and rpcgen.  The kernel's generators are awk
-// scripts and rpcgen, so with these the host needs nothing but Zig.
+// (contrib/one-true-awk), rpcgen and vtfontcvt.  With them the build's
+// generators (awk scripts, rpcgen, the console font) need nothing on the
+// host but Zig.
 //
 // tools/renux/include holds the few BSD definitions these tools need and
 // not every host C library has.
@@ -16,6 +17,7 @@ pub const HostTools = struct {
     yacc: *std.Build.Step.Compile,
     awk: *std.Build.Step.Compile,
     rpcgen: *std.Build.Step.Compile,
+    vtfontcvt: *std.Build.Step.Compile,
 };
 
 /// A C program for the host, without Zig's safety checks: the tools are
@@ -98,7 +100,25 @@ pub fn build(b: *std.Build) HostTools {
         .flags = &.{ "-include", "tools/renux/include/bsdcompat.h" },
     });
 
-    return .{ .yacc = yacc, .awk = awk, .rpcgen = rpcgen };
+    // vtfontcvt, which makes the loader's console font.  It uses kernel
+    // headers (sys/font.h and the rest), copied for it, and on hosts that
+    // are not BSDs the <sys/endian.h> of tools/build/cross-build.
+    const vt_inc = b.addWriteFiles();
+    for ([_][]const u8{ "fnv_hash.h", "font.h", "queue.h" }) |h|
+        _ = vt_inc.addCopyFile(b.path(b.fmt("sys/sys/{s}", .{h})), b.fmt("sys/{s}", .{h}));
+    switch (b.graph.host.result.os.tag) {
+        .linux => _ = vt_inc.addCopyFile(b.path("tools/build/cross-build/include/linux/sys/endian.h"), "sys/endian.h"),
+        .macos => _ = vt_inc.addCopyFile(b.path("tools/build/cross-build/include/mac/sys/endian.h"), "sys/endian.h"),
+        else => {},
+    }
+    const vtfontcvt = hostProgram(b, "vtfontcvt");
+    vtfontcvt.root_module.addIncludePath(vt_inc.getDirectory());
+    vtfontcvt.root_module.addIncludePath(b.path("sys/cddl/contrib/opensolaris/common/lz4"));
+    const vt_flags: []const []const u8 = &.{ "-include", "tools/renux/include/bsdcompat.h" };
+    vtfontcvt.root_module.addCSourceFile(.{ .file = b.path("usr.bin/vtfontcvt/vtfontcvt.c"), .flags = vt_flags });
+    vtfontcvt.root_module.addCSourceFile(.{ .file = b.path("sys/cddl/contrib/opensolaris/common/lz4/lz4.c"), .flags = vt_flags });
+
+    return .{ .yacc = yacc, .awk = awk, .rpcgen = rpcgen, .vtfontcvt = vtfontcvt };
 }
 
 /// contrib/byacc/VERSION, which usr.bin/yacc passes as YYPATCH.
