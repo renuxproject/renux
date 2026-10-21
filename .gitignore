@@ -40,3 +40,9 @@ tags
 .ccls-cache
 sys/*/compile
 /src.conf
+
+# Renux: build trees
+/obj/
+# Renux: the Zig build
+/zig-out/
+/.zig-cache/
