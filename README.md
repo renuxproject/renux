@@ -12,8 +12,9 @@ built by Zig alone.
 
 ```sh
 zig build kconfig      # the kernel configuration, in zig-out/kconfig/GENERIC
-zig build hosttools    # yacc and awk, built from this tree
+zig build hosttools    # yacc, awk, rpcgen and vtfontcvt, built from this tree
 zig build kernel       # the kernel, in zig-out/boot/kernel
+zig build loader       # the EFI loader and its Lua scripts, in zig-out/boot
 ```
 
 Zig is the whole toolchain. It compiles the C and assembly of the tree with
@@ -47,7 +48,7 @@ Renux follows FreeBSD `releng/15.1`.
 | Path | Description |
 | ---- | ----------- |
 | [`build.zig`](build.zig) | The build. |
-| [`tools/renux`](tools/renux) | The build's parts: the kernel configuration, the host tools, the kernel. |
+| [`tools/renux`](tools/renux) | The build's parts: the kernel configuration, the host tools, the kernel, the loader. |
 
 ### Base system
 

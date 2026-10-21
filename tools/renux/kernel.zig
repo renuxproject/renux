@@ -25,11 +25,13 @@
 const std = @import("std");
 const kconfig = @import("kconfig.zig");
 const hosttools = @import("hosttools.zig");
+const machine = @import("machine.zig");
 const LazyPath = std.Build.LazyPath;
 const Run = std.Build.Step.Run;
 
 pub const Options = struct {
     cfg: *const kconfig.Config,
+    machine: machine.Machine,
     tools: hosttools.HostTools,
     kgen: *std.Build.Step.Compile,
     kernconf: []const u8,
@@ -41,22 +43,6 @@ pub const Kernel = struct {
     kernel: LazyPath,
     debug: LazyPath,
 };
-
-/// What each machine needs: its target, its linker emulation, and the
-/// header directories its build directory links (machine/, x86/...).
-const Machine = struct {
-    arch: []const u8,
-    emulation: []const u8,
-    headers: []const [2][]const u8,
-};
-
-const machines = std.StaticStringMap(Machine).initComptime(.{
-    .{ "amd64", Machine{
-        .arch = "x86_64",
-        .emulation = "elf_x86_64_fbsd",
-        .headers = &.{ .{ "machine", "sys/amd64/include" }, .{ "x86", "sys/x86/include" }, .{ "i386", "sys/i386/include" } },
-    } },
-});
 
 // --- Command arguments -----------------------------------------------------
 
@@ -98,7 +84,7 @@ fn glob(pattern: []const u8, s: []const u8) bool {
 const Builder = struct {
     b: *std.Build,
     opts: Options,
-    machine: Machine,
+    machine: machine.Config,
     triple: []const u8,
     /// make variables, as in kern.pre.mk for this machine and compiler.
     vars: std.array_hash_map.String([]const u8) = .empty,
@@ -144,16 +130,15 @@ const Builder = struct {
         k.set("CFLAGS", k.b.fmt(
             "-O2 -pipe -fno-strict-aliasing ${{DEBUG}} -nostdinc -I. -I$S -I$S/contrib/ck/include " ++
                 "-I$S/contrib/libfdt -D_KERNEL -DHAVE_KERNEL_OPTION_HEADERS -include opt_global.h " ++
-                "-fno-common {s} -ffile-prefix-map=$S=/usr/src/sys " ++
-                "-mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -msoft-float " ++
-                "-fno-asynchronous-unwind-tables -ffreestanding -fwrapv -fstack-protector -gdwarf-4 " ++
+                "-fno-common {s} -ffile-prefix-map=$S=/usr/src/sys {s} " ++
+                "-ffreestanding -fwrapv -fstack-protector -gdwarf-4 " ++
                 "-Wall -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith -Wcast-qual -Wundef " ++
                 "-Wno-pointer-sign -D__printf__=__freebsd_kprintf__ -Wmissing-include-dirs " ++
                 "-fdiagnostics-show-option -Wno-unknown-pragmas -Wswitch " ++
                 "-Wno-error=tautological-compare -Wno-error=empty-body -Wno-error=parentheses-equality " ++
                 "-Wno-error=unused-function -Wno-error=pointer-sign -Wno-error=shift-negative-value " ++
-                "-Wno-address-of-packed-member -Wno-format-zero-length -mno-aes -mno-avx -std=gnu17",
-            .{frame},
+                "-Wno-address-of-packed-member -Wno-format-zero-length {s} -std=gnu17",
+            .{ frame, k.machine.kernel_cflags, k.machine.kernel_cflags_late },
         ));
         // Zig's clang is newer than the tree's LLVM: its new warnings must
         // not stop the build.
@@ -213,7 +198,7 @@ const Builder = struct {
                 else if (std.mem.eql(u8, name, "S"))
                     "sys"
                 else if (std.mem.eql(u8, name, "MACHINE"))
-                    "amd64"
+                    k.opts.machine.name()
                 else
                     k.vars.get(name) orelse k.fail("unknown variable {s}", .{name});
                 out.appendSlice(gpa, value) catch @panic("OOM");
@@ -662,11 +647,14 @@ const Builder = struct {
         }
 
         // force-dynamic-hack.pico: an empty shared object, so that the
-        // kernel is a dynamic executable.
+        // kernel is a dynamic executable.  The kernel records it as
+        // needed, by its soname: its name alone, as in FreeBSD's build,
+        // and not the path of the cache, so the kernel does not change
+        // with the cache.
         const hack_o = k.compile("force-dynamic-hack.o", "${NORMAL_C}", .{ .file = k.product("force-dynamic-hack.c") }, "");
         const hack = Run.create(b, "force-dynamic-hack.pico");
         hack.expectExitCode(0);
-        hack.addArgs(&.{ b.graph.zig_exe, "ld.lld", "-m", k.machine.emulation, "-shared", "-o" });
+        hack.addArgs(&.{ b.graph.zig_exe, "ld.lld", "-m", k.machine.emulation, "-shared", "-soname=force-dynamic-hack.pico", "-o" });
         const hack_pico = hack.addOutputFileArg("force-dynamic-hack.pico");
         hack.addFileArg(hack_o);
 
@@ -727,13 +715,13 @@ const Builder = struct {
 };
 
 pub fn build(b: *std.Build, opts: Options) Kernel {
-    const machine = machines.get(opts.cfg.machine) orelse
-        std.debug.panic("kernel: no support for machine {s}", .{opts.cfg.machine});
+    const config = opts.machine.config() orelse
+        std.debug.panic("kernel: the Zig build does not support {s} yet", .{opts.machine.name()});
     var k: Builder = .{
         .b = b,
         .opts = opts,
-        .machine = machine,
-        .triple = b.fmt("{s}-unknown-freebsd{s}", .{ machine.arch, opts.revision }),
+        .machine = config,
+        .triple = config.triple(b, opts.revision),
     };
     return k.build();
 }

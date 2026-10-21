@@ -8,22 +8,30 @@
 // compiles the C and assembly of the tree with the clang and lld it carries.
 //
 // Steps:
+//   zig build              the kernel and the loader (the default)
 //   zig build kernel       the kernel, in zig-out/boot/kernel/kernel, and its
 //                          debug file in zig-out/usr/lib/debug/boot/kernel/
+//   zig build loader       the EFI loader, in zig-out/boot/loader.efi, with the
+//                          Lua scripts and files it reads from /boot
 //   zig build kconfig      the kernel configuration: the option headers and
 //                          the list of files config(8) would select, in
 //                          zig-out/kconfig/<KERNCONF>/
 //   zig build hosttools    the host tools the build makes from the tree
-//                          (yacc, awk, rpcgen), in zig-out/hosttools/
+//                          (yacc, awk, rpcgen, vtfontcvt), in zig-out/hosttools/
 //
 // Options:
-//   -Dkernconf=NAME        kernel configuration (default: GENERIC)
-//   -Dmachine=NAME         target machine (default: amd64)
+//   -Dkernconf=NAME        kernel configuration, a file of
+//                          sys/<machine>/conf/ (default: GENERIC)
+//   -Dmachine=NAME         target machine: amd64, arm64 or riscv (default:
+//                          amd64; tools/renux/machine.zig says which the Zig
+//                          build supports)
 
 const std = @import("std");
 const kconfig = @import("tools/renux/kconfig.zig");
 const hosttools = @import("tools/renux/hosttools.zig");
 const kernel = @import("tools/renux/kernel.zig");
+const stand = @import("tools/renux/stand.zig");
+const Machine = @import("tools/renux/machine.zig").Machine;
 
 /// Reads files of the source tree for kconfig, and records each one as an
 /// input of the configuration, so that `zig build` configures again when
@@ -45,12 +53,18 @@ const TreeReader = struct {
 };
 
 pub fn build(b: *std.Build) void {
-    const kernconf = b.option([]const u8, "kernconf", "Kernel configuration (default: GENERIC)") orelse "GENERIC";
-    const machine = b.option([]const u8, "machine", "Target machine (default: amd64)") orelse "amd64";
+    const machine = b.option(Machine, "machine", "Target machine (default: amd64)") orelse .amd64;
+    const kernconf = b.option([]const u8, "kernconf", "Kernel configuration in sys/<machine>/conf (default: GENERIC)") orelse "GENERIC";
+    if (machine.config() == null) {
+        std.debug.print("error: the Zig build does not support {s} yet; it supports:\n", .{machine.name()});
+        for (std.enums.values(Machine)) |m| if (m.config() != null) std.debug.print("  {s}\n", .{m.name()});
+        std.process.exit(1);
+    }
+    checkKernconf(b, machine, kernconf);
 
     var tree: TreeReader = .{ .b = b };
     var diag: std.ArrayList(u8) = .empty;
-    const cfg = kconfig.configure(b.allocator, .{ .ctx = &tree, .readFn = TreeReader.read }, machine, kernconf, &diag) catch |err| switch (err) {
+    const cfg = kconfig.configure(b.allocator, .{ .ctx = &tree, .readFn = TreeReader.read }, machine.name(), kernconf, &diag) catch |err| switch (err) {
         error.ConfigError => std.debug.panic("{s}", .{diag.items}),
         error.OutOfMemory => @panic("OOM"),
     };
@@ -74,8 +88,8 @@ pub fn build(b: *std.Build) void {
     kconfig_step.dependOn(&install.step);
 
     const tools = hosttools.build(b);
-    const tools_step = b.step("hosttools", "Build the host tools (yacc, awk, rpcgen) into zig-out/hosttools");
-    for ([_]*std.Build.Step.Compile{ tools.yacc, tools.awk, tools.rpcgen }) |exe| {
+    const tools_step = b.step("hosttools", "Build the host tools (yacc, awk, rpcgen, vtfontcvt) into zig-out/hosttools");
+    for ([_]*std.Build.Step.Compile{ tools.yacc, tools.awk, tools.rpcgen, tools.vtfontcvt }) |exe| {
         const inst = b.addInstallArtifact(exe, .{ .dest_dir = .{ .override = .{ .custom = "hosttools" } } });
         tools_step.dependOn(&inst.step);
     }
@@ -92,6 +106,7 @@ pub fn build(b: *std.Build) void {
     const newvers = TreeReader.read(&tree, "sys/conf/newvers.sh") orelse @panic("no sys/conf/newvers.sh");
     const k = kernel.build(b, .{
         .cfg = &cfg,
+        .machine = machine,
         .tools = tools,
         .kgen = kgen,
         .kernconf = kernconf,
@@ -100,6 +115,54 @@ pub fn build(b: *std.Build) void {
     const kernel_step = b.step("kernel", "Build the kernel into zig-out/boot/kernel");
     kernel_step.dependOn(&b.addInstallFile(k.kernel, "boot/kernel/kernel").step);
     kernel_step.dependOn(&b.addInstallFile(k.debug, "usr/lib/debug/boot/kernel/kernel.debug").step);
+
+    // The EFI loader and what it reads from /boot.
+    const l = stand.build(b, .{ .machine = machine, .tools = tools, .kgen = kgen, .revision = shellVar(newvers, "REVISION") });
+    const loader_step = b.step("loader", "Build the EFI loader into zig-out/boot");
+    loader_step.dependOn(&b.addInstallFile(l.efi, "boot/loader.efi").step);
+    loader_step.dependOn(&b.addInstallDirectory(.{
+        .source_dir = b.path("stand/lua"),
+        .install_dir = .prefix,
+        .install_subdir = "boot/lua",
+        .include_extensions = &.{".lua"},
+    }).step);
+    loader_step.dependOn(&b.addInstallFile(b.path("stand/defaults/loader.conf"), "boot/defaults/loader.conf").step);
+    loader_step.dependOn(&b.addInstallFile(b.path(b.fmt("sys/{s}/conf/GENERIC.hints", .{machine.name()})), "boot/device.hints").step);
+
+    // `zig build`: the kernel and the loader.
+    b.getInstallStep().dependOn(kernel_step);
+    b.getInstallStep().dependOn(loader_step);
+}
+
+/// -Dkernconf must name a kernel configuration of sys/<machine>/conf; say
+/// which there are when it does not.
+fn checkKernconf(b: *std.Build, machine: Machine, kernconf: []const u8) void {
+    const conf = b.fmt("sys/{s}/conf", .{machine.name()});
+    const path = b.root.join(b.allocator, conf) catch @panic("OOM");
+    var dir = path.root_dir.handle.openDir(b.graph.io, path.sub_path, .{ .iterate = true }) catch |err|
+        std.debug.panic("{s}: {t}", .{ conf, err });
+    defer dir.close(b.graph.io);
+    b.dependOnDirectoryContents(b.path(conf));
+
+    // Configurations are the files of conf/ but DEFAULTS, NOTES (the
+    // documentation of every option) and hints files.
+    var names: std.ArrayList([]const u8) = .empty;
+    var it = dir.iterate();
+    while (it.next(b.graph.io) catch |err| std.debug.panic("{s}: {t}", .{ conf, err })) |e| {
+        if (e.kind != .file) continue;
+        if (std.mem.eql(u8, e.name, "DEFAULTS") or std.mem.eql(u8, e.name, "NOTES")) continue;
+        if (std.mem.indexOfScalar(u8, e.name, '.') != null) continue;
+        if (std.mem.eql(u8, e.name, kernconf)) return;
+        names.append(b.allocator, b.dupe(e.name)) catch @panic("OOM");
+    }
+    std.mem.sort([]const u8, names.items, {}, struct {
+        fn lt(_: void, a: []const u8, c: []const u8) bool {
+            return std.mem.order(u8, a, c) == .lt;
+        }
+    }.lt);
+    std.debug.print("error: no kernel configuration {s} in {s}; there are:\n", .{ kernconf, conf });
+    for (names.items) |n| std.debug.print("  {s}\n", .{n});
+    std.process.exit(1);
 }
 
 /// The value of NAME="..." in a shell script.
