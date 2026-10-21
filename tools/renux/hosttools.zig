@@ -3,15 +3,19 @@
 // Copyright (c) 2026 The Renux Project
 //
 // hosttools.zig - the programs the build runs on the host, built by Zig
-// from this tree: yacc (contrib/byacc) and awk (contrib/one-true-awk), as
-// usr.bin/yacc and usr.bin/awk build them.  The kernel's generators are
-// awk scripts, so with these the host needs nothing but Zig.
+// from this tree as usr.bin/ builds them: yacc (contrib/byacc), awk
+// (contrib/one-true-awk) and rpcgen.  The kernel's generators are awk
+// scripts and rpcgen, so with these the host needs nothing but Zig.
+//
+// tools/renux/include holds the few BSD definitions these tools need and
+// not every host C library has.
 
 const std = @import("std");
 
 pub const HostTools = struct {
     yacc: *std.Build.Step.Compile,
     awk: *std.Build.Step.Compile,
+    rpcgen: *std.Build.Step.Compile,
 };
 
 /// A C program for the host, without Zig's safety checks: the tools are
@@ -38,16 +42,19 @@ pub fn build(b: *std.Build) HostTools {
     yacc.root_module.addCSourceFiles(.{
         .root = b.path("contrib/byacc"),
         .files = &.{
-            "closure.c", "error.c",  "graph.c",  "lalr.c",    "lr0.c",
-            "main.c",    "mkpar.c",  "mstring.c", "output.c", "reader.c",
+            "closure.c", "error.c",  "graph.c",   "lalr.c",     "lr0.c",
+            "main.c",    "mkpar.c",  "mstring.c", "output.c",   "reader.c",
             "yaccpar.c", "symtab.c", "verbose.c", "warshall.c",
         },
     });
 
     // awk's grammar, its token table (maketab), then awk.
     const gram = b.addRunArtifact(yacc);
-    // awk's grammar has conflicts, which yacc reports on stderr.
+    // awk's grammar has conflicts, which yacc reports on stderr, as it
+    // does in FreeBSD's build.  They are expected: keep the report out of
+    // the build's output, which would show it as a warning.
     gram.expectExitCode(0);
+    _ = gram.captureStdErr(.{ .basename = "awkgram.conflicts" });
     gram.addArg("-d");
     gram.addArg("-H");
     const gram_h = gram.addOutputFileArg("awkgram.tab.h");
@@ -78,7 +85,20 @@ pub fn build(b: *std.Build) HostTools {
     awk.root_module.addCSourceFile(.{ .file = proctab, .flags = awk_flags });
     awk.root_module.linkSystemLibrary("m", .{});
 
-    return .{ .yacc = yacc, .awk = awk };
+    // rpcgen, with <rpc/types.h> from tools/renux/include: glibc has no
+    // Sun RPC any more.
+    const rpcgen = hostProgram(b, "rpcgen");
+    rpcgen.root_module.addIncludePath(b.path("tools/renux/include"));
+    rpcgen.root_module.addCSourceFiles(.{
+        .root = b.path("usr.bin/rpcgen"),
+        .files = &.{
+            "rpc_main.c",   "rpc_clntout.c", "rpc_cout.c",   "rpc_hout.c",   "rpc_parse.c",
+            "rpc_sample.c", "rpc_scan.c",    "rpc_svcout.c", "rpc_tblout.c", "rpc_util.c",
+        },
+        .flags = &.{ "-include", "tools/renux/include/bsdcompat.h" },
+    });
+
+    return .{ .yacc = yacc, .awk = awk, .rpcgen = rpcgen };
 }
 
 /// contrib/byacc/VERSION, which usr.bin/yacc passes as YYPATCH.
