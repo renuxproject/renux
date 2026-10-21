@@ -7,15 +7,17 @@ kernel and its modules, including both original and contributed software.
 
 The kernel is split in two:
 
-- **Machine-independent (MI) code** is everything outside `arch/`. It must not
-  include `<machine/...>` headers it does not need, nor test `__amd64__` and
-  friends. `./renux check` enforces this.
-- **Machine-dependent (MD) code** lives in `arch/<port>/`, one directory per
-  port. A new port touches `arch/<port>/` and nothing else.
+- **Machine-dependent (MD) code** lives in one directory per port (`amd64/`,
+  `arm64/`, ...), and `x86/` holds what amd64 and i386 share. A new port
+  touches its own directory and nothing else.
+- **Machine-independent (MI) code** is everything else. It must not include
+  `<machine/...>` headers it does not need, nor test `__amd64__` and friends.
+
+The ports are to move under `arch/`, as in NetBSD.
 
 ## Configuration
 
-Each port keeps its kernel configurations in `arch/<port>/conf/`:
+Each port keeps its kernel configurations in `<port>/conf/`:
 
 | File | Purpose |
 | ---- | ------- |
@@ -37,13 +39,13 @@ covers the kernel's design at a higher level.
 
 | Directory | Description |
 | --------- | ----------- |
-| `arch/amd64` | AMD64 (64-bit x86) |
-| `arch/arm` | 32-bit ARM |
-| `arch/arm64` | 64-bit ARM (AArch64) |
-| `arch/i386` | i386 (32-bit x86) |
-| `arch/powerpc` | PowerPC/POWER (32 and 64-bit) |
-| `arch/riscv` | 64-bit RISC-V |
-| `arch/x86` | Code shared by amd64 and i386 |
+| `amd64` | AMD64 (64-bit x86) |
+| `arm` | 32-bit ARM |
+| `arm64` | 64-bit ARM (AArch64) |
+| `i386` | i386 (32-bit x86) |
+| `powerpc` | PowerPC/POWER (32 and 64-bit) |
+| `riscv` | 64-bit RISC-V |
+| `x86` | Code shared by amd64 and i386 |
 
 ### Machine-independent
 

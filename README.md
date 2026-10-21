@@ -2,54 +2,52 @@
 
 Renux is a BSD operating system built for **portability**, **performance** and
 **ease of maintenance**. It is based on FreeBSD 15.1 and borrows NetBSD's
-discipline: machine-dependent code lives in [`sys/arch/`](sys/arch), and the
-whole system builds from any Unix host with nothing but a POSIX shell and a
-C/C++ compiler.
+discipline: machine-dependent code is kept apart from the rest, and the system is
+built by Zig alone.
 
-> **Status:** 0.1-CURRENT. Experimental; amd64 only.
+> **Status:** 0.1-CURRENT. Experimental; amd64 only. The Zig build is being
+> written.
 
 ## Building
 
 ```sh
-./renux build      # host tools, world and the GENERIC kernel
-./renux distrib    # sets and install media
-./renux run        # boot the install media in QEMU
+zig build kconfig      # the kernel configuration, in zig-out/kconfig/GENERIC
+zig build hosttools    # yacc and awk, built from this tree
+zig build kernel       # the kernel, in zig-out/boot/kernel
 ```
 
-The first build makes its own tools from this tree into `obj/tools/` — make,
-Lua, the LLVM toolchain, `makefs`, `mkimg` — so the result does not depend on
-the host. The build never needs root.
+Zig is the whole toolchain. It compiles the C and assembly of the tree with
+the clang and lld it carries, and builds from the tree every other program
+the build runs, so the result does not depend on the host.
+
+| Option | Effect |
+| ------ | ------ |
+| `-Dkernconf=NAME` | kernel configuration (default: `GENERIC`) |
+| `-Dmachine=NAME` | target machine (default: `amd64`) |
 
 ### Requirements
 
 | Tool | Used for |
 | ---- | -------- |
-| a POSIX `sh` | running `./renux` |
-| a C and C++ compiler | building the host tools in `obj/tools/` |
-| QEMU | `./renux run` only |
-
-Supported hosts: FreeBSD, NetBSD, OpenBSD, DragonFly, Linux and macOS.
+| Zig 0.17 | everything |
 
 ## Relationship with FreeBSD
 
 Renux follows FreeBSD `releng/15.1`.
 
 - The upstream branch is mirrored untouched as `upstream/releng-15.1`.
-- `./renux sync` merges it into `main`, so FreeBSD's security fixes reach
-  Renux as they are published.
-- Every file Renux changes is listed in
-  [`docs/DIVERGENCE.md`](docs/DIVERGENCE.md).
+- It is merged into `main`, so FreeBSD's security fixes reach Renux as they
+  are published.
+- Renux changes as few of FreeBSD's files as it can.
 
 ## Source Roadmap
 
 ### Renux
 
-| Directory | Description |
-| --------- | ----------- |
-| [`renux`](renux) | The build entry point. |
-| [`tools/renux`](tools/renux) | The Renux build and maintenance tools. |
-| [`distrib`](distrib) | Sets and install media. |
-| [`docs`](docs) | Renux documentation. |
+| Path | Description |
+| ---- | ----------- |
+| [`build.zig`](build.zig) | The build. |
+| [`tools/renux`](tools/renux) | The build's parts: the kernel configuration, the host tools, the kernel. |
 
 ### Base system
 
@@ -66,7 +64,7 @@ Renux follows FreeBSD `releng/15.1`.
 | `krb5` | Build system for Kerberos 5 (MIT). |
 | `lib` | System libraries. |
 | `libexec` | System commands intended to be executed by other commands or daemons. |
-| `release` | FreeBSD's release Makefiles and scripts (Renux uses [`distrib`](distrib)). |
+| `release` | FreeBSD's release Makefiles and scripts. |
 | `rescue` | Build system for statically linked `/rescue` commands. |
 | `sbin` | System commands. |
 | `secure` | Build system for cryptographic libraries and commands (excluding Kerberos). |
