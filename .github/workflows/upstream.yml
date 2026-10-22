@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# The upstream branch: FreeBSD's main (CURRENT), mirrored once a day, so
+# that its changes can be brought into Renux's main a little at a time
+# (git merge <commit of upstream>).
+#
+# The branch only moves forward: if FreeBSD's main ever stopped descending
+# from it, the push is refused and this job fails, rather than rewrite it.
+
+name: upstream
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: upstream
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Mirror FreeBSD's main into upstream
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          git init -q --bare mirror
+          cd mirror
+          git remote add origin "https://x-access-token:${TOKEN}@github.com/${REPO}.git"
+          git remote add freebsd https://github.com/freebsd/freebsd-src.git
+
+          # What the repository already has, so that only FreeBSD's new
+          # commits are pushed (GitHub refuses pushes over 2 GB): upstream,
+          # or main before upstream exists.
+          git fetch -q --no-tags origin '+refs/heads/upstream:refs/remotes/origin/upstream' ||
+              git fetch -q --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
+
+          git fetch -q --no-tags freebsd '+refs/heads/main:refs/remotes/freebsd/main'
+          echo "FreeBSD main: $(git rev-parse refs/remotes/freebsd/main)"
+
+          # Not --force: upstream only moves forward.
+          git push origin 'refs/remotes/freebsd/main:refs/heads/upstream'

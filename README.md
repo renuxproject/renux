@@ -34,12 +34,17 @@ the build runs, so the result does not depend on the host.
 
 ## Relationship with FreeBSD
 
-Renux follows FreeBSD `releng/15.1`.
+Renux is based on FreeBSD 15.1 and moves with FreeBSD's development:
 
-- The upstream branch is mirrored untouched as `upstream/releng-15.1`.
-- It is merged into `main`, so FreeBSD's security fixes reach Renux as they
-  are published.
-- Renux changes as few of FreeBSD's files as it can.
+| Branch | Contents |
+| ------ | -------- |
+| `main` | Renux. |
+| `upstream` | FreeBSD's `main` (CURRENT), mirrored untouched once a day by [`.github/workflows/upstream.yml`](.github/workflows/upstream.yml). |
+
+FreeBSD's changes are brought into `main` a little at a time, by merging
+`upstream` up to a chosen commit, so that Renux keeps a current base when
+a FreeBSD release reaches its end of life.  Renux changes as few of
+FreeBSD's files as it can, so that these merges stay simple.
 
 ## Source Roadmap
 
