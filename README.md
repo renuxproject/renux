@@ -19,6 +19,9 @@ system were easy to maintain, portable, and built on many systems at the cost
 of Zig alone?  Renux is the answer, and it is meant to be a technology anyone
 can take up, not one person's project.
 
+What Renux values, and how that decides what goes into it, is in
+[`PHILOSOPHY.md`](PHILOSOPHY.md).
+
 ## Building
 
 ```sh
