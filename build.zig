@@ -1,6 +1,10 @@
-// SPDX-License-Identifier: BSD-2-Clause
+// SPDX-License-Identifier: MPL-2.0
 //
 // Copyright (c) 2026 The Renux Project
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 //
 // The Renux build.
 //
@@ -17,7 +21,9 @@
 //                          the list of files config(8) would select, in
 //                          zig-out/kconfig/<KERNCONF>/
 //   zig build hosttools    the host tools the build makes from the tree
-//                          (yacc, awk, rpcgen, vtfontcvt), in zig-out/hosttools/
+//                          (yacc, awk, rpcgen, vtfontcvt, bmake), in
+//                          zig-out/hosttools/
+//   zig build bmake        bmake alone, in zig-out/hosttools/
 //
 // Options:
 //   -Dkernconf=NAME        kernel configuration, a file of
@@ -88,11 +94,13 @@ pub fn build(b: *std.Build) void {
     kconfig_step.dependOn(&install.step);
 
     const tools = hosttools.build(b);
-    const tools_step = b.step("hosttools", "Build the host tools (yacc, awk, rpcgen, vtfontcvt) into zig-out/hosttools");
-    for ([_]*std.Build.Step.Compile{ tools.yacc, tools.awk, tools.rpcgen, tools.vtfontcvt }) |exe| {
+    const tools_step = b.step("hosttools", "Build the host tools (yacc, awk, rpcgen, vtfontcvt, bmake) into zig-out/hosttools");
+    for ([_]*std.Build.Step.Compile{ tools.yacc, tools.awk, tools.rpcgen, tools.vtfontcvt, tools.bmake }) |exe| {
         const inst = b.addInstallArtifact(exe, .{ .dest_dir = .{ .override = .{ .custom = "hosttools" } } });
         tools_step.dependOn(&inst.step);
     }
+    const bmake_step = b.step("bmake", "Build bmake, FreeBSD's make, into zig-out/hosttools");
+    bmake_step.dependOn(&b.addInstallArtifact(tools.bmake, .{ .dest_dir = .{ .override = .{ .custom = "hosttools" } } }).step);
 
     // The kernel, installed where the system keeps it.
     const kgen = b.addExecutable(.{

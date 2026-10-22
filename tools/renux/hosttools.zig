@@ -1,12 +1,16 @@
-// SPDX-License-Identifier: BSD-2-Clause
+// SPDX-License-Identifier: MPL-2.0
 //
 // Copyright (c) 2026 The Renux Project
 //
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
 // hosttools.zig - the programs the build runs on the host, built by Zig
 // from this tree as usr.bin/ builds them: yacc (contrib/byacc), awk
-// (contrib/one-true-awk), rpcgen and vtfontcvt.  With them the build's
-// generators (awk scripts, rpcgen, the console font) need nothing on the
-// host but Zig.
+// (contrib/one-true-awk), rpcgen, vtfontcvt and bmake (contrib/bmake).
+// With them the build's generators (awk scripts, rpcgen, the console font)
+// and FreeBSD's own Makefiles need nothing on the host but Zig.
 //
 // tools/renux/include holds the few BSD definitions these tools need and
 // not every host C library has.
@@ -18,6 +22,7 @@ pub const HostTools = struct {
     awk: *std.Build.Step.Compile,
     rpcgen: *std.Build.Step.Compile,
     vtfontcvt: *std.Build.Step.Compile,
+    bmake: *std.Build.Step.Compile,
 };
 
 /// A C program for the host, without Zig's safety checks: the tools are
@@ -118,14 +123,92 @@ pub fn build(b: *std.Build) HostTools {
     vtfontcvt.root_module.addCSourceFile(.{ .file = b.path("usr.bin/vtfontcvt/vtfontcvt.c"), .flags = vt_flags });
     vtfontcvt.root_module.addCSourceFile(.{ .file = b.path("sys/cddl/contrib/opensolaris/common/lz4/lz4.c"), .flags = vt_flags });
 
-    return .{ .yacc = yacc, .awk = awk, .rpcgen = rpcgen, .vtfontcvt = vtfontcvt };
+    return .{ .yacc = yacc, .awk = awk, .rpcgen = rpcgen, .vtfontcvt = vtfontcvt, .bmake = buildBmake(b) };
+}
+
+/// A file of the tree, read while the build is configured, and recorded
+/// as an input of the configuration.
+fn readTree(b: *std.Build, sub_path: []const u8) []const u8 {
+    const path = b.root.join(b.allocator, sub_path) catch @panic("OOM");
+    const text = path.root_dir.handle.readFileAlloc(b.graph.io, path.sub_path, b.allocator, .unlimited) catch |err|
+        std.debug.panic("cannot read {s}: {t}", .{ sub_path, err });
+    b.dependOnFileContents(b.path(sub_path));
+    return text;
 }
 
 /// contrib/byacc/VERSION, which usr.bin/yacc passes as YYPATCH.
 fn byaccVersion(b: *std.Build) []const u8 {
-    const path = b.root.join(b.allocator, "contrib/byacc/VERSION") catch @panic("OOM");
-    const text = path.root_dir.handle.readFileAlloc(b.graph.io, path.sub_path, b.allocator, .unlimited) catch
-        @panic("cannot read contrib/byacc/VERSION");
-    b.dependOnFileContents(b.path("contrib/byacc/VERSION"));
-    return std.mem.trim(u8, text, " \t\n");
+    return std.mem.trim(u8, readTree(b, "contrib/byacc/VERSION"), " \t\n");
+}
+
+/// bmake, as contrib/bmake's boot-strap builds it with tools/build/make.py's
+/// options (no filemon), but without its configure script: config.h is
+/// usr.bin/bmake's, written by configure on FreeBSD, with what configure
+/// finds otherwise on the hosts that are not BSDs.
+fn buildBmake(b: *std.Build) *std.Build.Step.Compile {
+    const host = b.graph.host.result;
+    var config: []const u8 = readTree(b, "usr.bin/bmake/config.h");
+    switch (host.os.tag) {
+        .freebsd, .netbsd, .openbsd, .dragonfly, .macos => {},
+        else => {
+            // glibc and musl have no sysctl(3), sigvec(2) or <ranlib.h>,
+            // and glibc no longer declares sys_siglist.
+            for ([_][]const u8{ "HAVE_SYS_SYSCTL_H", "HAVE_SYSCTL", "HAVE_SIGVEC", "HAVE_RANLIB_H" }) |name|
+                config = undefine(b, config, name);
+            config = std.mem.replaceOwned(u8, b.allocator, config, "#define HAVE_DECL_SYS_SIGLIST 1", "#define HAVE_DECL_SYS_SIGLIST 0") catch @panic("OOM");
+        },
+    }
+    const wf = b.addWriteFiles();
+    _ = wf.add("config.h", config);
+
+    // The MACHINE and MACHINE_ARCH bmake reports, by FreeBSD's names.
+    const machine = switch (host.cpu.arch) {
+        .x86_64 => "amd64",
+        .aarch64 => "arm64",
+        .riscv64 => "riscv",
+        .powerpc64, .powerpc64le => "powerpc",
+        else => @tagName(host.cpu.arch),
+    };
+    const version = bmakeVersion(b);
+
+    const bmake = hostProgram(b, "bmake");
+    bmake.root_module.addIncludePath(wf.getDirectory());
+    bmake.root_module.addIncludePath(b.path("contrib/bmake"));
+    const flags: []const []const u8 = &.{ "-DHAVE_CONFIG_H", "-DMAKE_NATIVE", "-DUSE_META", "-DBMAKE_PATH_MAX=1024" };
+    bmake.root_module.addCSourceFiles(.{
+        .root = b.path("contrib/bmake"),
+        .files = &.{
+            "arch.c",      "buf.c", "compat.c",  "cond.c",        "dir.c",  "for.c",      "hash.c",
+            "job.c",       "lst.c", "make.c",    "make_malloc.c", "meta.c", "metachar.c", "parse.c",
+            "sigcompat.c", "str.c", "stresep.c", "suff.c",        "targ.c", "trace.c",    "util.c",
+            "var.c",
+        },
+        .flags = flags,
+    });
+    bmake.root_module.addCSourceFile(.{
+        .file = b.path("contrib/bmake/main.c"),
+        .flags = std.mem.concat(b.allocator, []const u8, &.{ flags, &.{
+            b.fmt("-DMAKE_VERSION=\"{s}\"", .{version}),
+            b.fmt("-DMACHINE=\"{s}\"", .{machine}),
+            b.fmt("-DMACHINE_ARCH=\"{s}\"", .{@tagName(host.cpu.arch)}),
+            "-DMAKE_OS=\"\"",
+            "-D_PATH_DEFSYSPATH=\".../share/mk\"",
+        } }) catch @panic("OOM"),
+    });
+    return bmake;
+}
+
+/// _MAKE_VERSION of contrib/bmake/VERSION.
+fn bmakeVersion(b: *std.Build) []const u8 {
+    var it = std.mem.splitScalar(u8, readTree(b, "contrib/bmake/VERSION"), '\n');
+    while (it.next()) |line| {
+        if (std.mem.startsWith(u8, line, "_MAKE_VERSION="))
+            return std.mem.trim(u8, line["_MAKE_VERSION=".len..], " \t");
+    }
+    @panic("no _MAKE_VERSION in contrib/bmake/VERSION");
+}
+
+/// config.h without "#define NAME 1".
+fn undefine(b: *std.Build, config: []const u8, name: []const u8) []const u8 {
+    return std.mem.replaceOwned(u8, b.allocator, config, b.fmt("#define {s} 1\n", .{name}), b.fmt("/* #undef {s} */\n", .{name})) catch @panic("OOM");
 }
