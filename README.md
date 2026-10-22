@@ -1,12 +1,23 @@
 # Renux Source
 
-Renux is a BSD operating system built for **portability**, **performance** and
-**ease of maintenance**. It is based on FreeBSD 15.1 and borrows NetBSD's
-discipline: machine-dependent code is kept apart from the rest, and the system is
-built by Zig alone.
+> **Install Zig. Build the whole system.**
+
+Renux is a general-purpose operating system: easy to maintain, portable, and
+built with Zig alone. It started from FreeBSD 15.1 and keeps FreeBSD's
+development flowing in, while it grows into a system of its own.
 
 > **Status:** 0.1-CURRENT. Experimental; amd64 only. The Zig build is being
 > written.
+
+## Why Renux
+
+Renux is **Ren**an + **U**ni**x**.  Its creator, Renan Lucas Vieira Hilário, uses
+Linux and the BSDs, and saw how many toolchains and dependencies it takes to
+build them.  Zig, his language of choice, compiles C, C++ and Zig for any
+machine, and it is a single binary.  So the question came: what if an operating
+system were easy to maintain, portable, and built on many systems at the cost
+of Zig alone?  Renux is the answer, and it is meant to be a technology anyone
+can take up, not one person's project.
 
 ## Building
 

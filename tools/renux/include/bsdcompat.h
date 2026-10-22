@@ -1,6 +1,7 @@
 /*
  * SPDX-License-Identifier: MPL-2.0
  *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
  * Copyright (c) 2026 The Renux Project
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
