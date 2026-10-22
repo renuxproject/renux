@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# Builds the kernel with `zig build kernel`, as on any host: nothing but
+# the Zig the build is written for, checked against its published sha256.
+# The kernel's sha256 is printed: the build is reproducible, so it is the
+# same as on any machine that builds the same commit.
+
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "LICENSES/**"]
+  pull_request:
+    branches: [main]
+    paths-ignore: ["**.md", "LICENSES/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ZIG_VERSION: "0.17.0"
+  ZIG_SHA256: "1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026"
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zig ${{ env.ZIG_VERSION }}
+        run: |
+          set -eu
+          tarball="zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+          curl -fsSL -o "$tarball" "https://ziglang.org/download/${ZIG_VERSION}/${tarball}"
+          echo "${ZIG_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/zig"
+          tar -xJf "$tarball" -C "$RUNNER_TEMP/zig" --strip-components=1
+          rm "$tarball"
+          echo "$RUNNER_TEMP/zig" >> "$GITHUB_PATH"
+
+      # The build's cache: a push that leaves the kernel alone rebuilds
+      # nothing.  The newest cache of the branch is the starting point.
+      - uses: actions/cache@v4
+        with:
+          path: .zig-cache
+          key: zig-${{ env.ZIG_VERSION }}-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            zig-${{ env.ZIG_VERSION }}-${{ github.ref_name }}-
+            zig-${{ env.ZIG_VERSION }}-main-
+
+      - name: zig build kernel
+        run: zig build kernel --summary failures
+
+      - name: The kernel
+        run: |
+          file zig-out/boot/kernel/kernel
+          size zig-out/boot/kernel/kernel
+          sha256sum zig-out/boot/kernel/kernel | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kernel-${{ github.sha }}
+          path: zig-out/boot/kernel/kernel
+          retention-days: 14
