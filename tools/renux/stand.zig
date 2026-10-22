@@ -1,6 +1,10 @@
-// SPDX-License-Identifier: BSD-2-Clause
+// SPDX-License-Identifier: MPL-2.0
 //
 // Copyright (c) 2026 The Renux Project
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 //
 // stand.zig - the EFI boot loader (loader.efi, with Lua), as stand/ builds
 // it: libsa, liblua and libefi, then the loader, linked as an ELF that the

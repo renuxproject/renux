@@ -78,7 +78,38 @@ Renux follows FreeBSD `releng/15.1`.
 | `usr.bin` | User commands. |
 | `usr.sbin` | System administration commands. |
 
-## Copyright
+## Licenses
 
-See [`COPYRIGHT`](COPYRIGHT). Third-party sources keep their own licenses in
-their directories.
+Renux's own work is under the
+[Mozilla Public License 2.0](LICENSES/MPL-2.0.txt), so that it stays open
+source: whoever changes a Renux file and distributes it must publish that
+file's source.  The MPL applies file by file, so Renux's files may be
+combined with code under other licenses.
+
+- **Files Renux writes** (the build, `build.zig` and
+  [`tools/renux`](tools/renux), and any new file) are under the MPL 2.0
+  and say `SPDX-License-Identifier: MPL-2.0`.
+- **Renux's code goes in new files** whenever it can, with no more than a
+  hook in FreeBSD's files (an `#include`, a call): every file then has one
+  license, and FreeBSD's changes merge with few conflicts.
+- **Renux's changes to FreeBSD's files**, when there is no other way, are
+  under the MPL 2.0 too.  The file keeps FreeBSD's license and notices for
+  FreeBSD's code, and its header says both, with a line that names Renux's
+  part:
+
+  ```c
+  /*-
+   * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
+   *
+   * ...FreeBSD's copyright and license, unchanged...
+   *
+   * Renux's changes to this file are under the Mozilla Public License,
+   * v. 2.0: https://mozilla.org/MPL/2.0/.
+   */
+  ```
+
+The rest of the tree keeps its license: FreeBSD's code is under the BSD
+licenses of [`COPYRIGHT`](COPYRIGHT), and third-party sources under their
+own, in their directories.  Some Renux files reproduce short pieces of
+FreeBSD (the config.c template of config(8), the vers.c of newvers.sh,
+libpe's MS-DOS stub); those pieces stay under their BSD licenses.
