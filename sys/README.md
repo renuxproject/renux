@@ -15,15 +15,61 @@ The kernel is split in two:
 
 The ports are to move under `arch/`, as in NetBSD.
 
+## Building
+
+The kernel is built by Zig, from the top of the tree, with nothing else on
+the host:
+
+```sh
+zig build kernel                      # GENERIC for amd64
+zig build kernel -Dkernconf=MINIMAL   # another configuration of amd64/conf/
+zig build kconfig                     # only the configuration: option headers
+                                      # and file lists, in zig-out/kconfig/
+```
+
+| Output | Path |
+| ------ | ---- |
+| The kernel | `zig-out/boot/kernel/kernel` |
+| Its debug symbols | `zig-out/usr/lib/debug/boot/kernel/kernel.debug` |
+
+- The configuration is read as `config(8)` reads it
+  ([`tools/renux/kconfig.zig`](../tools/renux/kconfig.zig)): the
+  configuration file, `conf/files*` and `conf/options*` choose the files and
+  the option headers, so a new file joins the kernel through `conf/files*`,
+  as in FreeBSD.
+- What `conf/kern.pre.mk`, `conf/kern.post.mk` and the generators of
+  `tools/` do is in [`tools/renux/kernel.zig`](../tools/renux/kernel.zig):
+  every command is a step, run in parallel, cached, and run again only when
+  one of its inputs (headers included) changes.
+- The build is reproducible: the same tree makes the same kernel, on any
+  host, in any cache directory.
+- Only amd64 is built by Zig yet
+  ([`tools/renux/machine.zig`](../tools/renux/machine.zig) lists the
+  ports).  Kernel modules and CTF (for DTrace) are not built yet, and
+  `kernel.debug` is the whole unstripped kernel.
+
+## Renux's code in the kernel
+
+Renux's kernel code goes in **new files**, under the
+[Mozilla Public License 2.0](../LICENSES/MPL-2.0.txt), listed in
+`conf/files*`; FreeBSD's files get no more than a hook to them (an
+`#include`, a call, a `SYSINIT`).  FreeBSD's changes then merge with few
+conflicts, and every file has one license.  When a FreeBSD file must
+change, the change is under the MPL 2.0 as well, and the file's header says
+so (see [Licenses](../README.md#licenses)).
+
 ## Configuration
 
-Each port keeps its kernel configurations in `<port>/conf/`:
+Each port keeps its kernel configurations in `<port>/conf/`; `-Dkernconf`
+names one, and the build lists them when the name is wrong:
 
 | File | Purpose |
 | ---- | ------- |
-| `GENERIC` | The configuration used in release builds. |
+| `GENERIC` | The configuration used in release builds, and the default. |
+| `MINIMAL` | `GENERIC` without what can be loaded as a module (Renux does not build modules yet). |
 | `NOTES` | Documents every possible entry. |
 | `LINT` | A compile-only configuration that maximizes build coverage. |
+| `DEFAULTS` | Read before every configuration of the port. |
 
 ## Documentation
 
