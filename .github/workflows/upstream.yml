@@ -12,6 +12,10 @@
 #
 # The branch only moves forward: if FreeBSD's main ever stopped descending
 # from it, the push is refused and this job fails, rather than rewrite it.
+#
+# It pushes with a deploy key of the repository, with write access, whose
+# private key is the UPSTREAM_DEPLOY_KEY secret: FreeBSD's commits change
+# .github/workflows, and GitHub lets no GITHUB_TOKEN push such commits.
 
 name: upstream
 
@@ -21,7 +25,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: upstream
@@ -34,13 +38,24 @@ jobs:
     steps:
       - name: Mirror FreeBSD's main into upstream
         env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_KEY: ${{ secrets.UPSTREAM_DEPLOY_KEY }}
           REPO: ${{ github.repository }}
         run: |
           set -eu
+          if [ -z "$DEPLOY_KEY" ]; then
+              echo "::error::The UPSTREAM_DEPLOY_KEY secret is not set; see the head of this workflow."
+              exit 1
+          fi
+          # The deploy key, and GitHub's host key as GitHub publishes it.
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/upstream
+          chmod 600 ~/.ssh/upstream
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/upstream -o IdentitiesOnly=yes"
+
           git init -q --bare mirror
           cd mirror
-          git remote add origin "https://x-access-token:${TOKEN}@github.com/${REPO}.git"
+          git remote add origin "git@github.com:${REPO}.git"
           git remote add freebsd https://github.com/freebsd/freebsd-src.git
 
           # What the repository already has, so that only FreeBSD's new
