@@ -39,9 +39,14 @@ the build runs, so the result does not depend on the host.
 
 ### Requirements
 
-| Tool | Used for |
-| ---- | -------- |
-| Zig 0.17 | everything |
+Zig, and nothing else.  Each series of Renux is built by one series of Zig,
+and will carry it as its compiler; `zig build` refuses a Zig of another
+series.
+
+| Renux | Zig |
+| ----- | --- |
+| 0.1-CURRENT | 0.17.x (0.17.0, then its fixes such as 0.17.1) |
+| 0.2-CURRENT | 0.18.0 |
 
 ## Relationship with FreeBSD
 

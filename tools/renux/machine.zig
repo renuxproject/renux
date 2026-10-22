@@ -15,10 +15,12 @@
 // The machine is a build option (-Dmachine), not the host: the build makes
 // a kernel for any machine on any host.
 
-const std = @import("std");
+const std: type = @import("std");
+const Build: type = std.Build;
+const Target: type = std.Target;
 
 /// The ports of the tree, by the names FreeBSD gives them.
-pub const Machine = enum {
+pub const Machine: type = enum {
     amd64,
     arm64,
     riscv,
@@ -50,9 +52,9 @@ pub const Machine = enum {
     }
 };
 
-pub const Config = struct {
+pub const Config: type = struct {
     /// The CPU of the target triple.
-    arch: std.Target.Cpu.Arch,
+    arch: Target.Cpu.Arch,
     /// lld's -m for the kernel.
     emulation: []const u8,
     /// The header directories config(8)'s build directory links, as
@@ -64,7 +66,7 @@ pub const Config = struct {
     kernel_cflags_late: []const u8,
 
     /// The target triple, for the FreeBSD release `revision`.
-    pub fn triple(c: Config, b: *std.Build, revision: []const u8) []const u8 {
+    pub fn triple(c: Config, b: *Build, revision: []const u8) []const u8 {
         return b.fmt("{s}-unknown-freebsd{s}", .{ @tagName(c.arch), revision });
     }
 };
