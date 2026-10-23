@@ -463,6 +463,10 @@ int	vt_is_cursor_in_area(const struct vt_device *vd,
 int	vt_cursor_invert(const struct vt_buf *vb, int row, int col);
 void	vt_cursor_draw(struct vt_device *vd, const struct vt_window *vw,
 	    const term_rect_t *area);
+
+/* Renux: the alternate screen, and erase of the history (vt_screen.c). */
+void	vt_screen_alternate(struct vt_window *vw, int on);
+void	vt_screen_clearhistory(struct vt_window *vw);
 void	vt_termsize(struct vt_device *, struct vt_font *, term_pos_t *);
 void	vt_winsize(struct vt_device *, struct vt_font *, struct winsize *);
 

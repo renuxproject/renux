@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2008-2009 Ed Schouten <ed@FreeBSD.org>
  * All rights reserved.
@@ -24,6 +24,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #ifndef _TEKEN_H_
@@ -107,6 +113,9 @@ typedef void tf_param_t(void *, int, unsigned int);
 #define	TP_SETBORDER	7
 #define	TP_SETLOCALCURSOR	8
 #define	TP_SETGLOBALCURSOR	9
+/* Renux: xterm's alternate screen and erase of saved lines. */
+#define	TP_ALTSCREEN	10
+#define	TP_CLEARHISTORY	11
 typedef void tf_respond_t(void *, const void *, size_t);
 
 typedef struct {

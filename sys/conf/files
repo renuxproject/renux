@@ -3529,6 +3529,7 @@ dev/vt/vt_core.c		optional vt
 dev/vt/vt_cpulogos.c		optional vt splash
 dev/vt/vt_cursor.c		optional vt
 dev/vt/vt_font.c		optional vt
+dev/vt/vt_screen.c		optional vt
 dev/vt/vt_sysmouse.c		optional vt
 dev/vte/if_vte.c		optional vte pci
 dev/watchdog/watchdog.c		standard

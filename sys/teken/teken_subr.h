@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2008-2009 Ed Schouten <ed@FreeBSD.org>
  * All rights reserved.
@@ -24,12 +24,19 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 static void teken_subr_cursor_up(teken_t *, unsigned int);
 static void teken_subr_erase_line(const teken_t *, unsigned int);
 static void teken_subr_regular_character(teken_t *, teken_char_t);
 static void teken_subr_reset_to_initial_state(teken_t *);
+static void teken_subr_restore_cursor(teken_t *);
 static void teken_subr_save_cursor(teken_t *);
 
 static inline int
@@ -518,6 +525,9 @@ teken_subr_erase_display(const teken_t *t, unsigned int mode)
 		r.tr_begin.tp_row = 0;
 		r.tr_end.tp_row = t->t_winsize.tp_row;
 		break;
+	case 3: /* Erase saved lines (xterm). */
+		teken_funcs_param(t, TP_CLEARHISTORY, 0);
+		return;
 	default: /* Erase from cursor to the bottom. */
 		teken_subr_erase_line(t, 0);
 
@@ -956,8 +966,12 @@ teken_subr_reset_dec_mode(teken_t *t, unsigned int cmd)
 	case 45: /* Disable reverse wraparound. */
 		teken_printf("DECRST reverse wraparound\n");
 		break;
-	case 47: /* Switch to alternate buffer. */
-		teken_printf("Switch to alternate buffer\n");
+	case 47: /* Switch away from alternate buffer. */
+	case 1047:
+	case 1049:
+		teken_funcs_param(t, TP_ALTSCREEN, 0);
+		if (cmd == 1049)
+			teken_subr_restore_cursor(t);
 		break;
 	case 1000: /* Mouse input. */
 		teken_funcs_param(t, TP_MOUSE, 0);
@@ -1115,7 +1129,13 @@ teken_subr_set_dec_mode(teken_t *t, unsigned int cmd)
 		teken_printf("DECSET reverse wraparound\n");
 		break;
 	case 47: /* Switch to alternate buffer. */
-		teken_printf("Switch away from alternate buffer\n");
+	case 1047:
+	case 1049:
+		if (cmd == 1049)
+			teken_subr_save_cursor(t);
+		teken_funcs_param(t, TP_ALTSCREEN, 1);
+		if (cmd != 47)
+			teken_subr_erase_display(t, 2);
 		break;
 	case 1000: /* Mouse input. */
 		teken_funcs_param(t, TP_MOUSE, 1);

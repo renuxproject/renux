@@ -1241,6 +1241,14 @@ vtterm_param(struct terminal *tm, int cmd, unsigned int arg)
 		vw->vw_bell_duration =
 		    TICKS_2_MSEC(TP_SETBELLPD_DURATION(arg)) * SBT_1MS;
 		break;
+	case TP_ALTSCREEN:
+		vt_screen_alternate(vw, arg);
+		vt_resume_flush_timer(vw, 0);
+		break;
+	case TP_CLEARHISTORY:
+		vt_screen_clearhistory(vw);
+		vt_resume_flush_timer(vw, 0);
+		break;
 	}
 }
 

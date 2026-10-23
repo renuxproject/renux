@@ -28,6 +28,12 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# Renux's changes to this file are under the Mozilla Public License,
+# v. 2.0: https://mozilla.org/MPL/2.0/.
 
 #	Termcap source file
 #	John Kunze, Berkeley
@@ -2825,6 +2831,8 @@ xterm-new|modern xterm:\
 	:tc=xterm-basic:
 #
 # This chunk is used for building the VT220/Sun/PC keyboard variants.
+# Renux: ti/te (the alternate screen) and E3 (erase saved lines), which
+# vt(4) supports in Renux (sys/dev/vt/vt_screen.c).
 xterm-basic|modern xterm common:\
 	:am:bs:km:mi:ms:ut:xn:AX:\
 	:Co#8:co#80:kn#12:li#24:pa#64:\
@@ -2838,6 +2846,7 @@ xterm-basic|modern xterm common:\
 	:rc=\E8:rs=\E[!p\E[?3;4l\E[4l\E>:sc=\E7:se=\E[27m:sf=^J:\
 	:so=\E[7m:sr=\EM:st=\EH:\
 	:ue=\E[24m:up=\E[A:us=\E[4m:ve=\E[?12l\E[?25h:vi=\E[?25l:vs=\E[?12;25h:\
+	:te=\E[?1049l:ti=\E[?1049h:E3=\E[3J:\
 	:tc=ecma+italics:
 
 # The xterm-new description has all of the features, but is not completely
