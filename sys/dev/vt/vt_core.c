@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2009, 2013 The FreeBSD Foundation
  *
@@ -29,6 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #include <sys/param.h>
@@ -1380,7 +1386,7 @@ vt_flush_to_buffer(struct vt_device *vd,
 
 			c = VTBUF_GET_FIELD(&vw->vw_buf, row, col);
 			vt_determine_colors(c,
-			    VTBUF_ISCURSOR(&vw->vw_buf, row, col), &fg, &bg);
+			    vt_cursor_invert(&vw->vw_buf, row, col), &fg, &bg);
 
 			if (vd->vd_drawn && (vd->vd_drawn[z] == c) &&
 			    vd->vd_drawnfg && (vd->vd_drawnfg[z] == fg) &&
@@ -1439,6 +1445,7 @@ vt_bitblt_buffer(struct vt_device *vd, const struct vt_window *vw,
 			    x, y, fg, bg);
 		}
 	}
+	vt_cursor_draw(vd, vw, area);
 
 #ifndef SC_NO_CUTPASTE
 	if (!vd->vd_mshown)

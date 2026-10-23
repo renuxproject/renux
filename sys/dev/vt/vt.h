@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2009, 2013 The FreeBSD Foundation
  *
@@ -29,6 +29,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #ifndef _DEV_VT_VT_H_
@@ -451,6 +457,11 @@ void	vt_compute_drawable_area(struct vt_window *);
 void	vt_determine_colors(term_char_t c, int cursor,
 	    term_color_t *fg, term_color_t *bg);
 int	vt_is_cursor_in_area(const struct vt_device *vd,
+	    const term_rect_t *area);
+
+/* Renux: the text cursor's shape (vt_cursor.c). */
+int	vt_cursor_invert(const struct vt_buf *vb, int row, int col);
+void	vt_cursor_draw(struct vt_device *vd, const struct vt_window *vw,
 	    const term_rect_t *area);
 void	vt_termsize(struct vt_device *, struct vt_font *, term_pos_t *);
 void	vt_winsize(struct vt_device *, struct vt_font *, struct winsize *);

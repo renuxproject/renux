@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2013 The FreeBSD Foundation
  *
@@ -26,6 +26,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #include <sys/param.h>
@@ -410,7 +416,7 @@ vt_fb_bitblt_text(struct vt_device *vd, const struct vt_window *vw,
 			c = VTBUF_GET_FIELD(&vw->vw_buf, row, col);
 			pattern = vtfont_lookup(vf, c);
 			vt_determine_colors(c,
-			    VTBUF_ISCURSOR(&vw->vw_buf, row, col), &fg, &bg);
+			    vt_cursor_invert(&vw->vw_buf, row, col), &fg, &bg);
 
 			z = row * PIXEL_WIDTH(VT_FB_MAX_WIDTH) + col;
 			if (z >= PIXEL_HEIGHT(VT_FB_MAX_HEIGHT) *
@@ -433,6 +439,7 @@ vt_fb_bitblt_text(struct vt_device *vd, const struct vt_window *vw,
 				vd->vd_drawnbg[z] = bg;
 		}
 	}
+	vt_cursor_draw(vd, vw, area);
 
 #ifndef SC_NO_CUTPASTE
 	if (!vd->vd_mshown)
