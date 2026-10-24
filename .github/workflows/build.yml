@@ -52,16 +52,10 @@ jobs:
           rm "$tarball"
           echo "$RUNNER_TEMP/zig" >> "$GITHUB_PATH"
 
-      # The build's cache: a push that leaves the kernel alone rebuilds
-      # nothing.  The newest cache of the branch is the starting point.
-      - uses: actions/cache@v4
-        with:
-          path: .zig-cache
-          key: zig-${{ env.ZIG_VERSION }}-${{ github.ref_name }}-${{ github.sha }}
-          restore-keys: |
-            zig-${{ env.ZIG_VERSION }}-${{ github.ref_name }}-
-            zig-${{ env.ZIG_VERSION }}-main-
-
+      # No cache of .zig-cache: Zig 0.17 compiles a C file again when its
+      # inode or mtime changes, even with the same contents, and every
+      # checkout makes new files.  A restored cache never hits; it only
+      # grew by the whole build at every push.
       - name: zig build kernel
         run: zig build kernel --summary failures
 

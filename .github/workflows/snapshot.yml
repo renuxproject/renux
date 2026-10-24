@@ -1,0 +1,112 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# A snapshot of Renux: `zig build image` makes the whole system (the world,
+# the kernel and the loader) into a bootable disk, as on any host, with
+# the Zig the build is written for.  The disk, compressed, and its sha256
+# are kept as the run's artifact; with `publish`, they also become a
+# pre-release.
+
+name: snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the snapshot as a pre-release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: false
+
+env:
+  ZIG_VERSION: "0.17.0"
+  ZIG_SHA256: "1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026"
+  MACHINE: amd64
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    outputs:
+      name: ${{ steps.name.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zig ${{ env.ZIG_VERSION }}
+        run: |
+          set -eu
+          tarball="zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+          curl -fsSL -o "$tarball" "https://ziglang.org/download/${ZIG_VERSION}/${tarball}"
+          echo "${ZIG_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/zig"
+          tar -xJf "$tarball" -C "$RUNNER_TEMP/zig" --strip-components=1
+          rm "$tarball"
+          echo "$RUNNER_TEMP/zig" >> "$GITHUB_PATH"
+
+      # The world's objects take several GB: make room on the runner.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h .
+
+      - name: The snapshot's name
+        id: name
+        run: |
+          echo "name=renux-0.1-CURRENT-${MACHINE}-$(date -u +%Y%m%d)-$(git rev-parse --short=10 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: zig build image
+        run: zig build image -Dmachine="$MACHINE" --summary failures
+
+      - name: Compress
+        env:
+          NAME: ${{ steps.name.outputs.name }}
+        run: |
+          set -eu
+          mkdir snapshot
+          xz -T0 -6 -c "zig-out/renux-0.1-CURRENT-${MACHINE}.img" > "snapshot/${NAME}.img.xz"
+          cd snapshot
+          sha256sum "${NAME}.img.xz" > SHA256
+          cat SHA256 | tee -a "$GITHUB_STEP_SUMMARY"
+          ls -l
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.name.outputs.name }}
+          path: snapshot/
+          retention-days: 30
+          compression-level: 0
+
+  publish:
+    if: ${{ inputs.publish }}
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.image.outputs.name }}
+          path: snapshot
+
+      - name: Pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ needs.image.outputs.name }}
+        run: |
+          set -eu
+          gh release create "snapshot-${NAME#renux-}" snapshot/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "Renux ${NAME#renux-}" \
+            --notes "A snapshot of Renux 0.1-CURRENT, built by \`zig build image\` from ${GITHUB_SHA}. Experimental. Write the disk to a USB stick or run it in QEMU with UEFI firmware."
