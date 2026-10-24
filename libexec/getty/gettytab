@@ -1,3 +1,9 @@
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# Renux's changes to this file are under the Mozilla Public License,
+# v. 2.0: https://mozilla.org/MPL/2.0/.  The login banner says Renux.
+
 # Most of the table entries here are just copies of the old getty table,
 # it is by no means certain, or even likely, that any of them are optimal
 # for any purpose whatever.  Nor is it likely that more than a couple are
@@ -33,7 +39,7 @@
 #     ep:op:  same as ap.
 #
 default:\
-	:cb:ce:ck:lc:fd#1000:im=\r\n%s/%m (%h) (%t)\r\n\r\n:sp#1200:\
+	:cb:ce:ck:lc:fd#1000:im=\r\nRenux/%m (%h) (%t)\r\n\r\n:sp#1200:\
 	:if=/etc/issue:
 
 #

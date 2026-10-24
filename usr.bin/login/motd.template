@@ -1,20 +1,15 @@
+Welcome to Renux!
 
-Welcome to FreeBSD!
+Renux is a general-purpose operating system, built with Zig alone.
+Website: https://renuxproject.github.io/
+Source:  https://github.com/renuxproject/renux
 
-Release Notes, Errata: https://www.FreeBSD.org/releases/
-Security Advisories:   https://www.FreeBSD.org/security/
+Renux is based on FreeBSD; FreeBSD's documentation applies:
 FreeBSD Handbook:      https://www.FreeBSD.org/handbook/
 FreeBSD FAQ:           https://www.FreeBSD.org/faq/
-Questions List:        https://www.FreeBSD.org/lists/questions/
-FreeBSD Forums:        https://forums.FreeBSD.org/
 
-Documents installed with the system are in the /usr/local/share/doc/freebsd/
-directory, or can be installed later with:  pkg install en-freebsd-doc
-For other languages, replace "en" with a language code like de or fr.
-
-Show the version of FreeBSD installed:  freebsd-version ; uname -a
-Please include that output and any error messages when posting questions.
+Show the version installed:  freebsd-version ; uname -a
 Introduction to manual pages:  man man
-FreeBSD directory layout:      man hier
+Directory layout:              man hier
 
 To change this login announcement, see motd(5).
