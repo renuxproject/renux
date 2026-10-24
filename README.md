@@ -41,8 +41,9 @@ the build runs, so the result does not depend on the host.
 The world is FreeBSD's `buildworld`, run by the bmake Zig builds from the
 tree, with Zig as every compiler.  Its Makefiles still call a few of the
 host's commands (`sh`, `cp`, `find`, `gzip`, `xz`...), as FreeBSD's
-`tools/build` lists them; building those from the tree too is the next
-step.  `zig build run` needs QEMU and its UEFI firmware.  A snapshot is
+`tools/build` lists them, and its host tools link against three of the
+host's libraries (libarchive, OpenSSL, zlib); building those from the
+tree too is the next step.  `zig build run` needs QEMU and its UEFI firmware.  A snapshot is
 made by the `snapshot` workflow on GitHub.
 
 | Option | Effect |
