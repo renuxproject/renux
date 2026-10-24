@@ -24,9 +24,19 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# Renux's changes to this file are under the Mozilla Public License,
+# v. 2.0: https://mozilla.org/MPL/2.0/.
+#
 
 BSDCFG_SHARE="/usr/share/bsdconfig"
 . $BSDCFG_SHARE/common.subr || exit 1
+
+# Renux: the account in a form of the installer's language.
+[ -x /usr/libexec/renux-installer/bin/renux-adduser ] && \
+    exec /usr/libexec/renux-installer/bin/renux-adduser
 
 clear
 echo "$OSNAME Installer"

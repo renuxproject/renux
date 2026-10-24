@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2021-2025 Alfonso Sabato Siciliano
  *
@@ -23,6 +23,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #include <curses.h>
@@ -132,9 +138,10 @@ build_privatemenu(struct bsddialog_conf *conf, struct privatemenu *m,
 
 			pritem->prefix = CHECK_STR(item->prefix);
 			pritem->depth = item->depth;
-			pritem->name = CHECK_STR(item->name);
-			pritem->desc = CHECK_STR(item->desc);
-			pritem->bottomdesc = CHECK_STR(item->bottomdesc);
+			/* Renux: shown in the user's language. */
+			pritem->name = renux_tr(CHECK_STR(item->name));
+			pritem->desc = renux_tr(CHECK_STR(item->desc));
+			pritem->bottomdesc = renux_tr(CHECK_STR(item->bottomdesc));
 			if (item->bottomdesc != NULL)
 				m->hasbottomdesc = true;
 

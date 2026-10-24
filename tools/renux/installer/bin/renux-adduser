@@ -1,0 +1,84 @@
+#!/bin/sh
+#
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# An account in the new system, in a form of the installer's language,
+# where bsdinstall runs adduser(8) on the console: bsdinstall's adduser
+# runs this.  The name, the full name and the password; then whether the
+# account administers the system (the wheel group, for su).  pw(8) creates
+# it, with a home directory and sh(1).  Then another, if asked.
+
+: ${BSDDIALOG_OK=0}
+[ -r "$RENUX_LANG_FILE" ] && . "$RENUX_LANG_FILE"
+
+CHROOT=${BSDINSTALL_CHROOT:-/mnt}
+backtitle=${msg_installer:-Renux Installer}
+title=${msg_user_title:-Add an Account}
+
+error=
+name=
+fullname=
+while true; do
+	exec 5>&1
+	output=$(bsddialog --backtitle "$backtitle" --title "$title" \
+	    --insecure --mixedform \
+	    "${msg_user_text:-An account to use the system, besides the administrator (root).}${error:+\n\n$error}" \
+	    0 0 0 \
+	    "${msg_user_name:-Name (login)}" 1 1 "$name" 1 22 20 16 0 \
+	    "${msg_user_fullname:-Full name}" 2 1 "$fullname" 2 22 30 64 0 \
+	    "${msg_user_password:-Password}" 3 1 "" 3 22 30 64 1 \
+	    "${msg_user_repeat:-Repeat password}" 4 1 "" 4 22 30 64 1 \
+	    2>&1 1>&5)
+	res=$?
+	exec 5>&-
+	[ $res -eq $BSDDIALOG_OK ] || exit 0
+
+	name=$(echo "$output" | sed -n 1p)
+	fullname=$(echo "$output" | sed -n 2p)
+	password1=$(echo "$output" | sed -n 3p)
+	password2=$(echo "$output" | sed -n 4p)
+
+	# Names as pw(8) and the usual tools take them.
+	case "$name" in
+	""|[!a-z_]*|*[!a-z0-9_.-]*)
+		error=${msg_user_bad_name:-The name must start with a lowercase letter and have only lowercase letters, digits, ., _ and -.}
+		continue
+		;;
+	esac
+	if chroot "$CHROOT" pw usershow "$name" > /dev/null 2>&1; then
+		error=${msg_user_exists:-This name is already in use.}
+		continue
+	fi
+	if [ -z "$password1" ]; then
+		error=${msg_user_empty:-The password cannot be empty.}
+		continue
+	fi
+	if [ "$password1" != "$password2" ]; then
+		error=${msg_user_mismatch:-The passwords do not match.}
+		continue
+	fi
+
+	groups=
+	bsddialog --backtitle "$backtitle" --title "$title" --yesno \
+	    "${msg_user_admin:-Should this account administer the system?\n\nIt will be in the wheel group, which can become root with su(1).}" \
+	    0 0 && groups="-G wheel"
+
+	if echo "$password1" | chroot "$CHROOT" pw useradd -n "$name" \
+	    -c "$fullname" -m -s /bin/sh $groups -h 0 2>> "${BSDINSTALL_LOG:-/tmp/bsdinstall_log}"; then
+		bsddialog --backtitle "$backtitle" --title "$title" --default-no --yesno \
+		    "${msg_user_another:-The account has been created. Would you like to add another one?}" \
+		    0 0 || exit 0
+		error=
+		name=
+		fullname=
+	else
+		error=${msg_user_failed:-The account could not be created.}
+	fi
+done

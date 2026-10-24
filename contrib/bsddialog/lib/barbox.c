@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2021-2025 Alfonso Sabato Siciliano
  *
@@ -23,6 +23,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #include <curses.h>
@@ -240,7 +246,7 @@ mixedgauge_size_position(struct dialog *d, int nminibars,
 	max_minibarlen = 0;
 	for (i = 0; i < (int)nminibars; i++)
 		max_minibarlen = MAX(max_minibarlen,
-		    (int)strcols(CHECK_STR(minilabels[i])));
+		    (int)strcols(renux_tr(CHECK_STR(minilabels[i]))));
 	max_minibarlen += 18; /* ' '<max_minibarlen>' ['13'] ' */
 	max_minibarlen = MAX(max_minibarlen, MIN_WMGBOX); /* mainbar */
 
@@ -293,7 +299,9 @@ do_mixedgauge(struct bsddialog_conf *conf, const char *text, int rows, int cols,
 		/* label */
 		if (color && miniperc >= 0)
 			wattron(d.widget, A_BOLD);
-		mvwaddcstr(d.widget, i+1, 2, CHECK_STR(minilabels[i]), d.w-20);
+		/* Renux: shown in the user's language. */
+		mvwaddcstr(d.widget, i+1, 2, renux_tr(CHECK_STR(minilabels[i])),
+		    d.w-20);
 		if (color && miniperc >= 0)
 			wattroff(d.widget, A_BOLD);
 		/* perc */
@@ -314,7 +322,8 @@ do_mixedgauge(struct bsddialog_conf *conf, const char *text, int rows, int cols,
 				minicolor = green;
 			wattron(d.widget, minicolor);
 			miniperc = abs(miniperc + 1);
-			mvwaddstr(d.widget, i+1, 1+d.w-2-15, states[miniperc]);
+			mvwaddstr(d.widget, i+1, 1+d.w-2-15,
+			    renux_tr_centered(states[miniperc], 13));
 			wattroff(d.widget, minicolor);
 		}
 	}
@@ -329,7 +338,7 @@ do_mixedgauge(struct bsddialog_conf *conf, const char *text, int rows, int cols,
 		RETURN_ERROR("Cannot build WINDOW bar");
 	update_barbox(&d, &b, false);
 	wattron(b.win, t.bar.color);
-	mvwaddstr(b.win, 0, 2, "Overall Progress");
+	mvwaddstr(b.win, 0, 2, renux_tr("Overall Progress"));
 	wattroff(b.win, t.bar.color);
 
 	b.y = b.x = 1;
@@ -408,7 +417,7 @@ bsddialog_progressview (struct bsddialog_conf *conf, const char *text, int rows,
 			clrtoeol();
 			readforsec = ((tnew - tstart) == 0) ? 0 :
 			    bsddialog_total_progview / (float)(tnew - tstart);
-			printw(pvconf->fmtbottomstr, bsddialog_total_progview,
+			printw(renux_tr(pvconf->fmtbottomstr), bsddialog_total_progview,
 			    readforsec);
 			refresh();
 

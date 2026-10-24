@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2022-2025 Alfonso Sabato Siciliano
  *
@@ -23,6 +23,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #include <curses.h>
@@ -245,7 +251,8 @@ drawsquare(struct bsddialog_conf *conf, WINDOW *win, enum elevation elev,
 	if (focus)
 		wattron(win, t.menu.f_namecolor);
 	if (strchr(fmt, 's') != NULL)
-		mvwprintw(win, 1, 1, fmt, m[value - 1]);
+		/* Renux: the month in the user's language. */
+		mvwprintw(win, 1, 1, fmt, renux_tr(m[value - 1]));
 	else
 		mvwprintw(win, 1, 1, fmt, value);
 	if (focus)
@@ -272,7 +279,7 @@ print_calendar(struct bsddialog_conf *conf, WINDOW *win, int yy, int mm, int dd,
 		wattroff(win, t.dialog.arrowcolor);
 	}
 
-	mvwaddstr(win, 1, 5, "Sun Mon Tue Wed Thu Fri Sat");
+	mvwaddstr(win, 1, 5, renux_tr("Sun Mon Tue Wed Thu Fri Sat"));
 	ndays = month_days(yy, mm);
 	y = 2;
 	wd = week_day(yy, mm, 1);
@@ -315,9 +322,9 @@ calendar_draw(struct dialog *d, bool redraw, WINDOW *yy_win, WINDOW *mm_win,
 
 	ycal = d->y + d->h - 15;
 	xcal = d->x + d->w/2 - 17;
-	mvwaddstr(d->widget, d->h - 16, d->w/2 - 17, "Month");
+	mvwaddstr(d->widget, d->h - 16, d->w/2 - 17, renux_tr("Month"));
 	update_box(d->conf, mm_win, ycal, xcal, 3, 17, RAISED);
-	mvwaddstr(d->widget, d->h - 16, d->w/2, "Year");
+	mvwaddstr(d->widget, d->h - 16, d->w/2, renux_tr("Year"));
 	update_box(d->conf, yy_win, ycal, xcal + 17, 3, 17, RAISED);
 	update_box(d->conf, dd_win, ycal + 3, xcal, 9, 34, RAISED);
 	wnoutrefresh(d->widget);

@@ -1,0 +1,201 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# The Renux installer in Spanish, for libbsddialog (contrib/bsddialog/lib/
+# renux_tr.c), which reads it from RENUX_LANG_TABLE: the dialogs of the
+# programs that use the library (bsdinstall's partedit and distextract,
+# tzsetup) and its own texts (buttons, states, the calendar).  An English
+# text, a tab, its translation; \n is a newline, %s any text.
+#
+# Buttons share one width, the longest label's: the partition editor's six
+# (Create ... Finish) fit 80 columns with labels of up to 9 letters, and
+# where they do not, partedit asks for its menu again and again.
+#
+# Buttons share one width, the longest label's: the partition editor's six
+# (Create ... Finish) fit 80 columns with labels of up to 9 letters, and
+# where they do not, partedit asks for its menu again and again.
+OK	OK
+Cancel	Cancelar
+Yes	Sí
+No	No
+Exit	Salir
+Help	Ayuda
+Extra	Extra
+Pending	Pendiente
+In Progress	En curso
+Done	Hecho
+Completed	Completado
+Succeeded	Éxito
+Failed	Falló
+Passed	Aprobado
+Checked	Verificado
+Skipped	Omitido
+UNKNOWN	DESCONOCIDO
+Overall Progress	Progreso general
+January	Enero
+February	Febrero
+March	Marzo
+April	Abril
+May	Mayo
+June	Junio
+July	Julio
+August	Agosto
+September	Septiembre
+October	Octubre
+November	Noviembre
+December	Diciembre
+Sun Mon Tue Wed Thu Fri Sat	Dom Lun Mar Mié Jue Vie Sáb
+Month	Mes
+Year	Año
+%s Installer	Instalador de %s
+Partitioning	Particionado
+Select the disk on which to install %s.	Elija el disco donde instalar %s.
+Entire Disk	Disco entero
+Partition	Partición
+Would you like to use this entire disk (%s) for %s or partition it to share it with other operating systems? Using the entire disk will erase any data currently stored there.	¿Desea usar el disco entero (%s) para %s o dividirlo en particiones para compartirlo con otros sistemas operativos? Usar el disco entero borra todos los datos que contiene.
+Non-bootable Disk	Disco no arrancable
+The existing partition scheme on this disk (%s) is not bootable on this platform. To install %s, it must be repartitioned. This will destroy all data on the disk. Are you sure you want to proceed?	El esquema de particiones de este disco (%s) no permite arrancar en esta plataforma. Para instalar %s hay que rehacer las particiones, lo que borra todos los datos del disco. ¿Desea continuar?
+Confirmation	Confirmación
+This will erase the disk. Are you sure you want to proceed?	Esto borrará el disco. ¿Desea continuar?
+There is not enough free space on %s to install %s (%s free, %s required). Would you like to choose another disk or to open the partition editor?	No hay espacio libre suficiente en %s para instalar %s (%s libres, %s necesarios). ¿Desea elegir otro disco o abrir el editor de particiones?
+Another Disk	Otro disco
+Editor	Editor
+Warning	Aviso
+Error	Error
+Partition Editor	Editor de particiones
+Please review the disk setup. When complete, press the Finish button.	Revise la configuración del disco. Cuando esté lista, use el botón Terminar.
+Create partitions for %s, F1 for help.\nNo changes will be made until you select Finish.	Cree las particiones para %s (F1 para ayuda).\nNo se cambia nada en el disco hasta elegir Terminar.
+Create	Crear
+Delete	Borrar
+Modify	Modificar
+Revert	Deshacer
+Finish	Terminar
+No disks found. If you need to install a kernel driver, choose Shell at the installation menu.	No se encontró ningún disco. Si necesita cargar un controlador en el kernel, elija Shell en el menú del instalador.
+Commit	Grabar
+Revert & Exit	Deshacer y salir
+Back	Volver
+Your changes will now be written to disk. If you have chosen to overwrite existing data, it will be PERMANENTLY ERASED. Are you sure you want to commit your changes?	Los cambios se grabarán en el disco. Los datos que eligió sobrescribir se BORRARÁN PARA SIEMPRE. ¿Desea grabar los cambios?
+No root partition was found. The root %s partition must have a mountpoint of '/'.	No hay partición raíz. La partición raíz de %s debe tener el punto de montaje '/'.
+Writing partition tables	Grabación de las tablas de particiones
+Initializing %s	Preparación de %s
+Initializing	Preparación
+Initializing file systems. Please wait.	Preparación de los sistemas de archivos en curso. Espere.
+Partition Scheme	Esquema de particiones
+Select a partition scheme for this volume:	Elija el esquema de particiones de este disco:
+Apple Partition Map	Mapa de particiones de Apple
+BSD Labels	Etiquetas BSD
+GUID Partition Table	Tabla de particiones GUID (recomendada)
+DOS Partitions	Particiones de DOS
+Bootable on PowerPC Apple Hardware	Arranca en equipos Apple PowerPC
+Bootable on most x86 systems	Arranca en la mayoría de los sistemas x86
+Bootable on most x86 systems and EFI aware ARM64	Arranca en la mayoría de los sistemas x86 y ARM64 con EFI
+This partition scheme (%s) is not bootable on this platform. Are you sure you want to proceed?	Este esquema de particiones (%s) no permite arrancar en esta plataforma. ¿Desea continuar?
+Add Partition	Nueva partición
+Edit Partition	Editar partición
+Options	Opciones
+Type:	Tipo:
+Size:	Tamaño:
+Mountpoint:	Montaje:
+Label:	Etiqueta:
+Filesystem type (e.g. freebsd-ufs, freebsd-zfs, freebsd-swap)	Tipo de sistema de archivos (por ejemplo freebsd-ufs, freebsd-swap)
+Partition size. Append K, M, G for kilobytes, megabytes or gigabytes.	Tamaño de la partición. Añada K, M o G para kilobytes, megabytes o gigabytes.
+Path at which to mount this partition (leave blank for swap, set to / for root filesystem)	Dónde montar esta partición (vacío para swap, / para la raíz)
+Path at which to mount partition (blank for swap, / for root filesystem)	Dónde montar la partición (vacío para swap, / para la raíz)
+Partition name. Not all partition schemes support this.	Nombre de la partición. No todos los esquemas de particiones lo permiten.
+No free space left on device.	No queda espacio libre en el disco.
+The partition table has been successfully created. Please press Create again to create partitions.	La tabla de particiones se creó. Use Crear de nuevo para crear las particiones.
+UFS Options	Opciones de UFS
+Boot Partition	Partición de arranque
+Checking distribution archives.\nPlease wait...	Verificación de los componentes del sistema.\nEspere...
+Archive Extraction	Extracción del sistema
+\nExtracting distribution files...\n	\nExtracción de los componentes del sistema en curso...\n
+%10lli files read @ %'9.1f files/sec.	%10lli elementos leídos, %'9.1f por segundo
+Extract Error	Error en la extracción
+Time Zone Selector	Zona horaria
+Select a region	Elija una región
+Africa	África
+America -- North and South	América (del Norte y del Sur)
+Antarctica	Antártida
+Arctic Ocean	Océano Ártico
+Asia	Asia
+Atlantic Ocean	Océano Atlántico
+Australia	Australia
+Europe	Europa
+Indian Ocean	Océano Índico
+Pacific Ocean	Océano Pacífico
+Countries in %s	Países: %s
+Select a country or region	Elija un país o región
+Islands and groups in the %s	Islas y archipiélagos: %s
+Select an island or group	Elija una isla o archipiélago
+%s Time Zones	Zonas horarias: %s
+Select a zone which observes the same time as your locality.	Elija una zona con la misma hora que su localidad.
+Does the timezone abbreviation `%s' look reasonable?	¿Le parece correcta la abreviatura de la zona horaria, %s?
+Select local or UTC (Coordinated Universal Time) clock	Reloj en hora local o UTC (tiempo universal)
+Is this machine's CMOS clock set to UTC?  If it is set to local time,\nor you don't know, please choose NO here!	¿El reloj interno (CMOS) de este equipo está en UTC? Si está en la\nhora local, o si no lo sabe, ¡elija NO!
+Brazil	Brasil
+Portugal	Portugal
+Spain	España
+Mexico	México
+Argentina	Argentina
+Chile	Chile
+Colombia	Colombia
+Peru	Perú
+Venezuela	Venezuela
+Uruguay	Uruguay
+Paraguay	Paraguay
+Bolivia	Bolivia
+Ecuador	Ecuador
+Angola	Angola
+Mozambique	Mozambique
+Cape Verde	Cabo Verde
+United States	Estados Unidos
+Canada	Canadá
+Japan	Japón
+Germany	Alemania
+France	Francia
+Italy	Italia
+Britain (UK)	Reino Unido
+>>> Continue with default keymap	>>> Continuar con el teclado predeterminado
+>>> Continue with %s keymap	>>> Continuar con el teclado %s
+->- Test default keymap	->- Probar el teclado predeterminado
+->- Test %s keymap	->- Probar el teclado %s
+# tzsetup's titles, made with names it has translated already.
+Countries in Africa	Países: África
+Countries in America -- North and South	Países: América (del Norte y del Sur)
+Countries in Antarctica	Países: Antártida
+Countries in Asia	Países: Asia
+Countries in Australia	Países: Australia
+Countries in Europe	Países: Europa
+Islands and groups in the Atlantic Ocean	Islas y archipiélagos: Océano Atlántico
+Islands and groups in the Indian Ocean	Islas y archipiélagos: Océano Índico
+Islands and groups in the Pacific Ocean	Islas y archipiélagos: Océano Pacífico
+Islands and groups in the Arctic Ocean	Islas y archipiélagos: Océano Ártico
+Brazil Time Zones	Zonas horarias: Brasil
+Portugal Time Zones	Zonas horarias: Portugal
+Spain Time Zones	Zonas horarias: España
+Mexico Time Zones	Zonas horarias: México
+Argentina Time Zones	Zonas horarias: Argentina
+Chile Time Zones	Zonas horarias: Chile
+Colombia Time Zones	Zonas horarias: Colombia
+Peru Time Zones	Zonas horarias: Perú
+Venezuela Time Zones	Zonas horarias: Venezuela
+Uruguay Time Zones	Zonas horarias: Uruguay
+Paraguay Time Zones	Zonas horarias: Paraguay
+Bolivia Time Zones	Zonas horarias: Bolivia
+Ecuador Time Zones	Zonas horarias: Ecuador
+Angola Time Zones	Zonas horarias: Angola
+Mozambique Time Zones	Zonas horarias: Mozambique
+Cape Verde Time Zones	Zonas horarias: Cabo Verde
+United States Time Zones	Zonas horarias: Estados Unidos
+Canada Time Zones	Zonas horarias: Canadá
+Japan Time Zones	Zonas horarias: Japón
+Germany Time Zones	Zonas horarias: Alemania
+France Time Zones	Zonas horarias: Francia
+Italy Time Zones	Zonas horarias: Italia
+Britain (UK) Time Zones	Zonas horarias: Reino Unido

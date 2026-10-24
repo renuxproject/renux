@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2021-2025 Alfonso Sabato Siciliano
  *
@@ -23,6 +23,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #include <curses.h>
@@ -132,7 +138,8 @@ build_privateform(struct bsddialog_conf*conf, unsigned int nitems,
 	f->h = f->w = f->minviewrows = 0;
 	for (i = 0; i < f->nitems; i++) {
 		item = &f->pritems[i];
-		item->label = CHECK_STR(items[i].label);
+		/* Renux: shown in the user's language. */
+		item->label = renux_tr(CHECK_STR(items[i].label));
 		item->ylabel = items[i].ylabel;
 		item->xlabel = items[i].xlabel;
 		item->yfield = items[i].yfield;
@@ -144,7 +151,7 @@ build_privateform(struct bsddialog_conf*conf, unsigned int nitems,
 		item->fieldonebyte = items[i].flags &
 		    BSDDIALOG_FIELDSINGLEBYTE;
 		item->cursorend = items[i].flags & BSDDIALOG_FIELDCURSOREND;
-		item->bottomdesc = CHECK_STR(items[i].bottomdesc);
+		item->bottomdesc = renux_tr(CHECK_STR(items[i].bottomdesc));
 		if (items[i].bottomdesc != NULL)
 			f->hasbottomdesc = true;
 		if (item->readonly || (item->secure && !insecurecursor))

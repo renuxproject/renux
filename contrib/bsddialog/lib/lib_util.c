@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2021-2025 Alfonso Sabato Siciliano
  *
@@ -23,6 +23,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #include <stdarg.h>
@@ -381,6 +387,10 @@ set_buttons(struct dialog *d, bool shortcut, const char *oklabel,
 		d->bs.nbuttons = 1;
 	}
 
+	/* Renux: the labels in the user's language. */
+	for (i = 0; i < (int)d->bs.nbuttons; i++)
+		d->bs.label[i] = renux_tr(d->bs.label[i]);
+
 	for (i = 0; i < (int)d->bs.nbuttons; i++) {
 		mbtowc(&first, d->bs.label[i], MB_CUR_MAX);
 		d->bs.first[i] = first;
@@ -388,7 +398,7 @@ set_buttons(struct dialog *d, bool shortcut, const char *oklabel,
 
 	if (d->conf->button.default_label != NULL) {
 		for (i = 0; i < (int)d->bs.nbuttons; i++) {
-			if (strcmp(d->conf->button.default_label,
+			if (strcmp(renux_tr(d->conf->button.default_label),
 			    d->bs.label[i]) == 0)
 				d->bs.curr = i;
 		}
@@ -1345,7 +1355,10 @@ prepare_dialog(struct bsddialog_conf *conf, const char *text, int rows,
 	d->conf = conf;
 	d->rows = rows;
 	d->cols = cols;
-	d->text = CHECK_STR(text);
+	/* Renux: the texts in the user's language. */
+	d->text = renux_tr(CHECK_STR(text));
+	conf->title = renux_tr(conf->title);
+	conf->bottomtitle = renux_tr(conf->bottomtitle);
 	d->bs.nbuttons = 0;
 
 	if (d->conf->shadow) {

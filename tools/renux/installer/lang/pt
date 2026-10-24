@@ -61,6 +61,21 @@ msg_pkg_installing="Instalação do gestor de pacotes (pkg) pela Internet em cur
 msg_pkg_done="O gestor de pacotes está instalado.\n\nNo novo sistema, instale programas com:\n\n    pkg install NOME"
 msg_pkg_failed="Não foi possível instalar o gestor de pacotes: o acesso à Internet funciona?\n\nNo novo sistema, pode instalá-lo depois com:\n\n    pkg bootstrap"
 
+# renux-adduser.
+msg_user_title="Nova conta"
+msg_user_text="Uma conta para usar o sistema, além da do administrador (root)."
+msg_user_name="Nome (de acesso)"
+msg_user_fullname="Nome completo"
+msg_user_password="Senha"
+msg_user_repeat="Repita a senha"
+msg_user_bad_name="O nome deve começar por uma letra minúscula e ter só letras minúsculas, algarismos, ., _ e -."
+msg_user_exists="Este nome já está em uso."
+msg_user_empty="A senha não pode ficar vazia."
+msg_user_mismatch="As senhas não coincidem."
+msg_user_admin="Esta conta vai administrar o sistema?\n\nEla entra no grupo wheel, que pode tornar-se root com su(1)."
+msg_user_another="A conta foi criada. Deseja criar outra?"
+msg_user_failed="Não foi possível criar a conta."
+
 renux_tr()
 {
 	case "$1" in

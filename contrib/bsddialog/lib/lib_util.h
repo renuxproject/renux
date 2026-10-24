@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2021-2025 Alfonso Sabato Siciliano
  *
@@ -23,6 +23,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #ifndef _LIBBSDDIALOG_UTIL_H_
@@ -118,6 +124,11 @@ unsigned int strcols(const char *mbstring);
 int str_props(const char *mbstring, unsigned int *cols, bool *has_multi_col);
 void mvwaddwch(WINDOW *w, int y, int x, wchar_t wch);
 wchar_t* alloc_mbstows(const char *mbstring);
+
+/* Renux: texts in the user's language (renux_tr.c) */
+void renux_tr_init(void);
+const char *renux_tr(const char *text);
+const char *renux_tr_centered(const char *text, int width);
 
 /* buttons */
 void

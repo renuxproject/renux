@@ -24,12 +24,26 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# Renux's changes to this file are under the Mozilla Public License,
+# v. 2.0: https://mozilla.org/MPL/2.0/.
+#
 
 BSDCFG_SHARE="/usr/share/bsdconfig"
 . $BSDCFG_SHARE/common.subr || exit 1
 
 # Select timezone
-chroot $BSDINSTALL_CHROOT tzsetup -s
+# Renux: tzsetup runs in the new system: the installer's language goes
+# there with it (libbsddialog's table, RENUX_LANG_TABLE).
+if [ -r "$RENUX_LANG_TABLE" ]; then
+	cp "$RENUX_LANG_TABLE" $BSDINSTALL_CHROOT/tmp/renux-lang.tab
+	RENUX_LANG_TABLE=/tmp/renux-lang.tab chroot $BSDINSTALL_CHROOT tzsetup -s
+	rm -f $BSDINSTALL_CHROOT/tmp/renux-lang.tab
+else
+	chroot $BSDINSTALL_CHROOT tzsetup -s
+fi
 
 # Switch to target timezone
 saved_TZ="$TZ"

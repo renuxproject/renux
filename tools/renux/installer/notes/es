@@ -34,9 +34,8 @@ Limitaciones conocidas
   - Solo UFS: el kernel aún no tiene módulos, así que no hay ZFS y
     faltan los controladores que FreeBSD distribuye como módulos
     (algunas tarjetas Wi-Fi, por ejemplo).
-  - Algunos pasos del instalador siguen en inglés: el editor de
-    particiones, la extracción del sistema, la zona horaria y la
-    creación de cuentas.
+  - En español y portugués, los nombres de los teclados y de la
+    mayoría de las zonas horarias siguen en inglés.
   - El compilador del sistema, Zig 0.17 (con cc, c++, ld, ar y ranlib,
     que lo ejecutan), es la versión de ziglang.org para FreeBSD; aún no
     se compila desde el código fuente de Renux.

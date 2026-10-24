@@ -39,6 +39,14 @@ renux_language()
 	RENUX_LANG=${lang:-en}
 	RENUX_LANG_FILE=$RENUX_INSTALLER/lang/$RENUX_LANG
 	export RENUX_LANG RENUX_LANG_FILE
+	# libbsddialog's table, for the programs that use it (partedit,
+	# distextract, tzsetup): none for English.
+	if [ -r "$RENUX_INSTALLER/lang/$RENUX_LANG.tab" ]; then
+		RENUX_LANG_TABLE=$RENUX_INSTALLER/lang/$RENUX_LANG.tab
+		export RENUX_LANG_TABLE
+	else
+		unset RENUX_LANG_TABLE
+	fi
 }
 
 renux_welcome()

@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2021-2025 Alfonso Sabato Siciliano
  *
@@ -23,6 +23,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #include <curses.h>
@@ -41,6 +47,8 @@ int bsddialog_init_notheme(void)
 	int i, j, c, error;
 
 	set_error_string("");
+	/* Renux: the locale of the user's language. */
+	renux_tr_init();
 
 	if (initscr() == NULL)
 		RETURN_ERROR("Cannot init curses (initscr)");
@@ -106,7 +114,8 @@ int bsddialog_backtitle(struct bsddialog_conf *conf, const char *backtitle)
 
 	move(0, 1);
 	clrtoeol();
-	addstr(CHECK_STR(backtitle));
+	/* Renux: in the user's language. */
+	addstr(renux_tr(CHECK_STR(backtitle)));
 	if (conf->no_lines != true) {
 		if (conf->ascii_lines)
 			mvhline(1, 1, '-', SCREENCOLS - 2);
