@@ -17,7 +17,7 @@
 
 msg_installer="Instalador do Renux"
 msg_welcome_title="Boas-vindas"
-msg_welcome_text="Boas-vindas ao Renux 0.1 \"Aurora\"!\n\nO Renux é um sistema operacional de uso geral, compilado só com Zig.\nO que deseja fazer?"
+msg_welcome_text="Boas-vindas ao Renux!\n\nO Renux é um sistema operacional de uso geral, compilado só com Zig.\nO que deseja fazer?"
 msg_menu_install="Instalar o Renux"
 msg_menu_notes="Notas da versão"
 msg_menu_about="Sobre o Renux"
@@ -26,7 +26,7 @@ msg_menu_live="Usar o sistema ao vivo"
 msg_menu_shell="Abrir um shell"
 msg_menu_reboot="Reiniciar"
 msg_menu_poweroff="Desligar"
-msg_about_text="Renux 0.1-CURRENT \"Aurora\" (experimental)\n\nUm sistema operacional de uso geral, fácil de manter e portátil:\ninstale o Zig e compile o sistema inteiro.\n\nBaseado no FreeBSD 15.1, compilado com Zig 0.17.\nCriado por Renan Lucas Vieira Hilário e The Renux Project.\nO trabalho do Renux está sob a Mozilla Public License 2.0;\no código do FreeBSD, sob as licenças BSD.\n\nhttps://renuxproject.github.io/\nhttps://github.com/renuxproject/renux"
+msg_about_text="Renux em desenvolvimento (experimental)\n\nUm sistema operacional de uso geral, fácil de manter e portátil:\ninstale o Zig e compile o sistema inteiro.\n\nBaseado no FreeBSD 15.1, compilado com Zig 0.17.\nCriado por Renan Lucas Vieira Hilário e The Renux Project.\nO trabalho do Renux está sob a Mozilla Public License 2.0;\no código do FreeBSD, sob as licenças BSD.\n\nhttps://renuxproject.github.io/\nhttps://github.com/renuxproject/renux"
 
 msg_btn_ok="OK"
 msg_btn_cancel="Cancelar"

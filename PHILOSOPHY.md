@@ -68,8 +68,8 @@ builds Renux with the Zig it ships, so the system can maintain itself.
 
   | Renux | Zig |
   | ----- | --- |
-  | 0.1-CURRENT | 0.17.x |
-  | 0.2-CURRENT | 0.18.0 |
+  | 0.1   | 0.17.x |
+  | 0.2   | 0.18.0 |
 
 ### 4. Easy to maintain
 

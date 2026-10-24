@@ -6,7 +6,7 @@ Renux is a general-purpose operating system: easy to maintain, portable, and
 built with Zig alone. It started from FreeBSD 15.1 and keeps FreeBSD's
 development flowing in, while it grows into a system of its own.
 
-> **Status:** 0.1-CURRENT, "Aurora". Experimental; amd64 only. The Zig build is being
+> **Status:** in development, toward Renux 0.1 "Aurora". Experimental; amd64 only. The Zig build is being
 > written.
 
 ## Why Renux
@@ -30,8 +30,8 @@ zig build hosttools    # yacc, awk, rpcgen and vtfontcvt, built from this tree
 zig build kernel       # the kernel, in zig-out/boot/kernel
 zig build loader       # the EFI loader and its Lua scripts, in zig-out/boot
 zig build world        # the userland, installed without root in .zig-cache/world
-zig build image        # a bootable disk, zig-out/renux-0.1-CURRENT-amd64.img
-zig build iso          # the installer, zig-out/renux-0.1-CURRENT-amd64-installer.iso
+zig build image        # a bootable disk, zig-out/renux-amd64.img
+zig build iso          # the installer, zig-out/renux-amd64-installer.iso
 zig build run          # that disk in QEMU, with UEFI firmware
 ```
 
@@ -63,8 +63,8 @@ lazy dependency of `build.zig.zon`, which only the media need.
 
 | Renux | Codename | Zig |
 | ----- | -------- | --- |
-| 0.1-CURRENT | Aurora | 0.17.x (0.17.0, then its fixes such as 0.17.1) |
-| 0.2-CURRENT | | 0.18.0 |
+| 0.1 | Aurora | 0.17.x (0.17.0, then its fixes such as 0.17.1) |
+| 0.2 | | 0.18.0 |
 
 ## Relationship with FreeBSD
 

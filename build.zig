@@ -29,9 +29,9 @@
 //                          installworld, run by bmake with Zig as the
 //                          compiler, installed without root in the cache
 //   zig build image        a bootable disk: the world, the kernel and the
-//                          loader, in zig-out/renux-<version>-<machine>.img
+//                          loader, in zig-out/renux-<machine>.img
 //   zig build iso          the installer ISO (bsdinstall), in
-//                          zig-out/renux-<version>-<machine>-installer.iso
+//                          zig-out/renux-<machine>-installer.iso
 //   zig build run          the disk in QEMU, with UEFI firmware (QEMU is
 //                          the one program besides Zig the build may use,
 //                          and only for this step)
@@ -66,8 +66,10 @@ const Machine: type = machine_mod.Machine;
 /// Each series of Renux is built by one series of Zig, and carries it:
 /// Renux 0.1 by Zig 0.17.x (0.17.0, then its fixes), Renux 0.2 by Zig
 /// 0.18.  A Zig of another series stops the build here, rather than in
-/// the middle of it.
-const renux_version: []const u8 = "0.1-CURRENT";
+/// the middle of it.  Until a series is released, what the tree builds is
+/// Renux in development, which has no version: the series says only which
+/// Zig builds it.
+const renux_series: []const u8 = "0.1";
 /// Each series of Renux has a codename too, in alphabetical order.
 const renux_codename: []const u8 = "Aurora";
 const zig_series: SemanticVersion = .{
@@ -81,7 +83,7 @@ comptime {
     if (v.major != zig_series.major or v.minor != zig_series.minor)
         @compileError(fmt.comptimePrint(
             "Renux {s} \"{s}\" is built by Zig {d}.{d}.x, and this is Zig {s}",
-            .{ renux_version, renux_codename, zig_series.major, zig_series.minor, builtin.zig_version_string },
+            .{ renux_series, renux_codename, zig_series.major, zig_series.minor, builtin.zig_version_string },
         ));
 }
 
@@ -209,12 +211,12 @@ pub fn build(b: *Build) void {
     // once Zig has fetched it: the path of this first pass is never used.
     const zig_dir: Build.LazyPath = if (b.lazyDependency(config.zig, .{})) |dep| dep.path(".") else b.path("tools");
     const image: Build.LazyPath = medium(b, image_exe, "disk", "renux.img", w, k, l, machine, config, zig_dir, .{ .string = w.mkimg }, null);
-    const install_image: *Build.Step.InstallFile = b.addInstallFile(image, b.fmt("renux-{s}-{s}.img", .{ renux_version, machine.name() }));
-    const image_step: *Build.Step = b.step("image", "Make a bootable disk in zig-out/renux-<version>-<machine>.img");
+    const install_image: *Build.Step.InstallFile = b.addInstallFile(image, b.fmt("renux-{s}.img", .{machine.name()}));
+    const image_step: *Build.Step = b.step("image", "Make a bootable disk in zig-out/renux-<machine>.img");
     image_step.dependOn(&install_image.step);
     const iso: Build.LazyPath = medium(b, image_exe, "iso", "renux.iso", w, k, l, machine, config, zig_dir, .{ .file = b.path("release/rc.local") }, b.path("tools/renux/installer"));
-    const install_iso: *Build.Step.InstallFile = b.addInstallFile(iso, b.fmt("renux-{s}-{s}-installer.iso", .{ renux_version, machine.name() }));
-    const iso_step: *Build.Step = b.step("iso", "Make the installer ISO in zig-out/renux-<version>-<machine>-installer.iso");
+    const install_iso: *Build.Step.InstallFile = b.addInstallFile(iso, b.fmt("renux-{s}-installer.iso", .{machine.name()}));
+    const iso_step: *Build.Step = b.step("iso", "Make the installer ISO in zig-out/renux-<machine>-installer.iso");
     iso_step.dependOn(&install_iso.step);
 
     // The disk in QEMU.  -snapshot: what Renux writes is thrown away, and

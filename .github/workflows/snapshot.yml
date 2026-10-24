@@ -12,10 +12,18 @@
 # ISO, as on any host, with the Zig the build is written for.  They are
 # kept, compressed, with their sha256 as the run's artifact; with
 # `publish`, they also become a pre-release.
+#
+# The Renux Nightly build: every day at 18:00 in Brasília (21:00 UTC;
+# Brasília has no daylight saving time), the snapshot is made and
+# published.  GitHub may start a scheduled run some minutes late.  A
+# nightly build is Renux in development, so it has no version: it is named
+# by its machine, its day and its commit.
 
 name: snapshot
 
 on:
+  schedule:
+    - cron: "0 21 * * *"
   workflow_dispatch:
     inputs:
       publish:
@@ -83,7 +91,7 @@ jobs:
       - name: The snapshot's name
         id: name
         run: |
-          echo "name=renux-0.1-CURRENT-${MACHINE}-$(date -u +%Y%m%d)-$(git rev-parse --short=10 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "name=renux-nightly-${MACHINE}-$(date -u +%Y%m%d)-$(git rev-parse --short=10 HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: zig build image iso
         run: zig build image iso -Dmachine="$MACHINE" --summary failures
@@ -94,8 +102,8 @@ jobs:
         run: |
           set -eu
           mkdir snapshot
-          xz -T0 -6 -c "zig-out/renux-0.1-CURRENT-${MACHINE}.img" > "snapshot/${NAME}.img.xz"
-          xz -T0 -6 -c "zig-out/renux-0.1-CURRENT-${MACHINE}-installer.iso" > "snapshot/${NAME}-installer.iso.xz"
+          xz -T0 -6 -c "zig-out/renux-${MACHINE}.img" > "snapshot/${NAME}.img.xz"
+          xz -T0 -6 -c "zig-out/renux-${MACHINE}-installer.iso" > "snapshot/${NAME}-installer.iso.xz"
           cd snapshot
           sha256sum "${NAME}.img.xz" "${NAME}-installer.iso.xz" > SHA256
           cat SHA256 | tee -a "$GITHUB_STEP_SUMMARY"
@@ -109,12 +117,18 @@ jobs:
           compression-level: 0
 
   publish:
-    if: ${{ inputs.publish }}
+    # Every scheduled run publishes; a run by hand, when asked to.
+    if: ${{ github.event_name == 'schedule' || inputs.publish }}
     needs: image
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      # The build's commit and the 10 before it, for the notes.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 10
+
       - uses: actions/download-artifact@v4
         with:
           name: ${{ needs.image.outputs.name }}
@@ -126,7 +140,12 @@ jobs:
           NAME: ${{ needs.image.outputs.name }}
         run: |
           set -eu
-          gh release create "snapshot-${NAME#renux-}" snapshot/* \
+          # renux-nightly-MACHINE-YYYYMMDD-COMMIT
+          commit=${NAME##*-}
+          day=${NAME%-*}
+          day=${day##*-}
+          sh .github/nightly/notes.sh "$NAME" > notes.md
+          gh release create "${NAME#renux-}" snapshot/* \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title "Renux ${NAME#renux-} \"Aurora\"" \
-            --notes "A snapshot of Renux 0.1-CURRENT \"Aurora\", built by \`zig build image\` from ${GITHUB_SHA}. Experimental, UEFI only. The installer ISO boots into the Renux installer, which sets up the disk and the network and installs the system (choose UFS: ZFS is not built yet). The disk image is a ready system."
+            --title "Renux Nightly build · ${day:0:4}-${day:4:2}-${day:6:2} (${commit})" \
+            --notes-file notes.md

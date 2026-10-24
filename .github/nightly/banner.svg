@@ -1,0 +1,69 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+
+Copyright (c) 2026 Renan Lucas Vieira Hilário
+Copyright (c) 2026 The Renux Project
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+The banner of the Renux Nightly builds, at the top of each one's release:
+the name as the logo writes it, in the purple of the night, with the moon,
+stars and an aurora.  banner.png is made from it with
+  rsvg-convert -w 1280 banner.svg -o banner.png
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 360" width="1280" height="360" role="img" aria-label="Renux Nightly builds">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a0b45"/>
+      <stop offset="45%" stop-color="#4c1d95"/>
+      <stop offset="80%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#b57bff"/>
+    </linearGradient>
+    <linearGradient id="aurora" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#c4b5fd" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#e9d5ff" stop-opacity=".22"/>
+      <stop offset="75%" stop-color="#f0abfc" stop-opacity=".28"/>
+      <stop offset="100%" stop-color="#f0abfc" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="crescent">
+      <rect width="1280" height="360" fill="#fff"/>
+      <circle cx="1146" cy="88" r="44" fill="#000"/>
+    </mask>
+    <clipPath id="card"><rect width="1280" height="360" rx="28"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#card)">
+    <rect width="1280" height="360" fill="url(#sky)"/>
+
+    <!-- The aurora. -->
+    <path d="M0 250 C 220 170, 420 300, 660 220 S 1060 140, 1280 210 L 1280 290 C 1060 230, 880 320, 640 300 S 220 250, 0 330 Z" fill="url(#aurora)"/>
+    <path d="M0 290 C 260 230, 470 330, 700 270 S 1080 210, 1280 260 L 1280 300 C 1070 260, 900 340, 690 320 S 260 280, 0 340 Z" fill="url(#aurora)" opacity=".7"/>
+
+    <!-- The stars. -->
+    <g fill="#ffffff">
+      <circle cx="610" cy="54" r="2" opacity=".9"/>
+      <circle cx="702" cy="118" r="1.4" opacity=".7"/>
+      <circle cx="790" cy="44" r="2.4" opacity=".95"/>
+      <circle cx="868" cy="150" r="1.3" opacity=".6"/>
+      <circle cx="940" cy="76" r="1.8" opacity=".85"/>
+      <circle cx="1012" cy="182" r="1.2" opacity=".55"/>
+      <circle cx="1040" cy="36" r="1.5" opacity=".75"/>
+      <circle cx="1220" cy="160" r="1.8" opacity=".8"/>
+      <circle cx="1196" cy="38" r="1.2" opacity=".6"/>
+      <circle cx="1110" cy="214" r="1.4" opacity=".6"/>
+      <circle cx="560" cy="160" r="1.2" opacity=".5"/>
+      <circle cx="1250" cy="96" r="1.1" opacity=".6"/>
+    </g>
+    <path d="M790 32 v24 M778 44 h24" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>
+
+    <!-- The moon. -->
+    <circle cx="1124" cy="100" r="48" fill="#f5f3ff" mask="url(#crescent)"/>
+
+    <!-- The name. -->
+    <text x="84" y="190" font-family="FreeSerif, Georgia, 'Times New Roman', serif" font-style="italic" font-weight="700" font-size="150" letter-spacing="2" fill="#ffffff">Renux</text>
+    <text x="90" y="262" font-family="'Nimbus Sans', 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="58" letter-spacing="3" fill="#ede9fe">Nightly builds</text>
+    <text x="92" y="312" font-family="'Nimbus Sans', 'Helvetica Neue', Arial, sans-serif" font-size="24" letter-spacing="2" fill="#ddd6fe" opacity=".85">IN DEVELOPMENT  ·  BUILT EVERY DAY WITH ZIG</text>
+  </g>
+</svg>

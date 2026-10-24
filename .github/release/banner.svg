@@ -1,0 +1,59 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+
+Copyright (c) 2026 Renan Lucas Vieira Hilário
+Copyright (c) 2026 The Renux Project
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+The banner of Renux 0.1 "Aurora", the stable release: the name as the
+logo writes it, in the logo's green and yellow, with the dawn its codename
+means, the sun rising behind an aurora.  The nightly builds have theirs,
+in purple, in ../nightly.  banner.png is made from it with
+  rsvg-convert -w 1280 banner.svg -o banner.png
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 360" width="1280" height="360" role="img" aria-label="Renux 0.1 Aurora">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1c430a"/>
+      <stop offset="42%" stop-color="#3f7413"/>
+      <stop offset="76%" stop-color="#7fb21f"/>
+      <stop offset="100%" stop-color="#e3d43a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="1060" cy="300" r="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff6b0" stop-opacity=".75"/>
+      <stop offset="45%" stop-color="#f3e15a" stop-opacity=".28"/>
+      <stop offset="100%" stop-color="#f3e15a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="aurora" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d9f99d" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#ecfccb" stop-opacity=".22"/>
+      <stop offset="75%" stop-color="#fef9c3" stop-opacity=".3"/>
+      <stop offset="100%" stop-color="#fef9c3" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="card"><rect width="1280" height="360" rx="28"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#card)">
+    <rect width="1280" height="360" fill="url(#sky)"/>
+    <rect width="1280" height="360" fill="url(#glow)"/>
+
+    <!-- The sun, rising. -->
+    <g stroke="#fffbe0" stroke-width="3" stroke-linecap="round" opacity=".55">
+      <path d="M1060 196 v-34 M988 214 l-20 -26 M1132 214 l20 -26 M940 262 l-30 -12 M1180 262 l30 -12"/>
+    </g>
+    <circle cx="1060" cy="300" r="82" fill="#fff8cc"/>
+
+    <!-- The aurora, and the horizon. -->
+    <path d="M0 250 C 220 170, 420 300, 660 220 S 1060 140, 1280 210 L 1280 290 C 1060 230, 880 320, 640 300 S 220 250, 0 330 Z" fill="url(#aurora)"/>
+    <path d="M0 290 C 260 230, 470 330, 700 270 S 1080 210, 1280 260 L 1280 300 C 1070 260, 900 340, 690 320 S 260 280, 0 340 Z" fill="url(#aurora)" opacity=".7"/>
+    <path d="M0 330 C 300 312, 900 322, 1280 306 L 1280 360 L 0 360 Z" fill="#163808" opacity=".55"/>
+
+    <!-- The name. -->
+    <text x="84" y="190" font-family="FreeSerif, Georgia, 'Times New Roman', serif" font-style="italic" font-weight="700" font-size="150" letter-spacing="2" fill="#ffffff">Renux</text>
+    <text x="90" y="262" font-family="'Nimbus Sans', 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="58" letter-spacing="3" fill="#f7fee7">0.1 “Aurora”</text>
+    <text x="92" y="312" font-family="'Nimbus Sans', 'Helvetica Neue', Arial, sans-serif" font-size="24" letter-spacing="2" fill="#ecfccb" opacity=".9">STABLE RELEASE  ·  BUILT WITH ZIG</text>
+  </g>
+</svg>
