@@ -1,0 +1,277 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# The Renux installer in Spanish, as neutral as it can be: no voseo, no
+# words of one country (equipo, not computadora or ordenador).
+#
+# The welcome's texts; the buttons; the variables of bsdinstall's auto it
+# reads after its own (its partitioning menu); and renux_tr, which sets t
+# to the translation of a text of bsdinstall's dialogs.
+
+msg_installer="Instalador de Renux"
+msg_welcome_title="Bienvenida"
+msg_welcome_text="¡Bienvenido a Renux 0.1 \"Aurora\"!\n\nRenux es un sistema operativo de uso general, compilado solo con Zig.\n¿Qué desea hacer?"
+msg_menu_install="Instalar Renux"
+msg_menu_notes="Notas de la versión"
+msg_menu_about="Acerca de Renux"
+msg_menu_language="Cambiar el idioma"
+msg_menu_live="Usar el sistema en vivo"
+msg_menu_shell="Abrir una shell"
+msg_menu_reboot="Reiniciar"
+msg_menu_poweroff="Apagar"
+msg_about_text="Renux 0.1-CURRENT \"Aurora\" (experimental)\n\nUn sistema operativo de uso general, fácil de mantener y portable:\ninstale Zig y compile el sistema entero.\n\nBasado en FreeBSD 15.1, compilado con Zig 0.17.\nCreado por Renan Lucas Vieira Hilário y The Renux Project.\nEl trabajo de Renux está bajo la Mozilla Public License 2.0;\nel código de FreeBSD, bajo las licencias BSD.\n\nhttps://renuxproject.github.io/\nhttps://github.com/renuxproject/renux"
+
+msg_btn_ok="OK"
+msg_btn_cancel="Cancelar"
+msg_btn_yes="Sí"
+msg_btn_no="No"
+msg_btn_exit="Salir"
+msg_btn_help="Ayuda"
+
+# bsdinstall's auto.
+msg_freebsd_installer="$msg_installer"
+msg_abort="Abortar"
+msg_an_installation_step_has_been_aborted="Se interrumpió un paso de la instalación. ¿Desea\nreiniciar la instalación o salir del instalador?"
+msg_auto_ufs="Automático (UFS)"
+msg_auto_ufs_desc="Configuración guiada del disco con UFS"
+msg_auto_ufs_help="Elija el disco que se configurará con UFS y particiones estándar"
+msg_auto_zfs="Automático (ZFS)"
+msg_auto_zfs_desc="Configuración guiada con la raíz en ZFS"
+msg_auto_zfs_help="Elija el disco que se configurará con ZFS y particiones estándar"
+msg_exit="Salir"
+msg_manual="Manual"
+msg_manual_desc="Configuración manual del disco (avanzado)"
+msg_manual_help="Crear particiones a medida, con menús"
+msg_restart="Reiniciar"
+msg_shell="Shell"
+msg_shell_desc="Abrir una shell y particionar a mano"
+msg_shell_help="Crear particiones a medida con herramientas de línea de comandos"
+
+# renux-pkg.
+msg_pkg_title="Gestor de paquetes"
+msg_pkg_ask="¿Desea instalar ahora el gestor de paquetes (pkg) por Internet?\n\nAsí el nuevo sistema instala programas con \"pkg install\" desde el primer arranque, sin bootstrap."
+msg_pkg_installing="Instalación del gestor de paquetes (pkg) por Internet en curso..."
+msg_pkg_done="El gestor de paquetes está instalado.\n\nEn el nuevo sistema, instale programas con:\n\n    pkg install NOMBRE"
+msg_pkg_failed="No se pudo instalar el gestor de paquetes: ¿funciona la conexión a Internet?\n\nEn el nuevo sistema, puede instalarlo más tarde con:\n\n    pkg bootstrap"
+
+renux_tr()
+{
+	case "$1" in
+	"Renux Installer")
+		t="Instalador de Renux" ;;
+	"Complete")
+		t="Completado" ;;
+	"Installation of Renux complete! Would you like to reboot into the installed system now?")
+		t="¡La instalación de Renux se completó! ¿Desea reiniciar ahora en el sistema instalado?" ;;
+	"Reboot")
+		t="Reiniciar" ;;
+	"Shutdown")
+		t="Apagar" ;;
+	"Live System")
+		t="Sistema en vivo" ;;
+	"Installing")
+		t="Instalación en curso" ;;
+	"Error")
+		t="Error" ;;
+	"Warning")
+		t="Aviso" ;;
+	"Partitioning")
+		t="Particionado" ;;
+	"How would you like to partition your disk?")
+		t="¿Cómo desea particionar el disco?" ;;
+	"Select Installation Type")
+		t="Tipo de instalación" ;;
+	"Distribution Select")
+		t="Componentes del sistema" ;;
+	"Choose optional system components to install:")
+		t="Elija los componentes opcionales que desea instalar:" ;;
+	"Network Installation")
+		t="Instalación por red" ;;
+	"Some installation files were not found on the boot volume. The next few screens will allow you to configure networking so that they can be downloaded from the Internet.")
+		t="Algunos datos de la instalación no están en el medio de instalación. Los próximos pasos configuran la red para descargarlos de Internet." ;;
+	"Add User Accounts")
+		t="Cuentas de acceso" ;;
+	"Would you like to add users to the installed system now?")
+		t="¿Desea crear cuentas de acceso en el sistema instalado ahora?" ;;
+	"Manual Configuration")
+		t="Configuración manual" ;;
+	"The installation is now finished. Before exiting the installer, would you like to open a shell in the new system to make any final manual modifications?")
+		t="La instalación terminó. Antes de salir del instalador, ¿desea abrir una shell en el nuevo sistema para hacer ajustes manuales?" ;;
+	"Set Hostname")
+		t="Nombre del sistema" ;;
+	"Please choose a hostname for this machine.\n\nIf you are running on a managed network, please ask\nyour network administrator for an appropriate name.")
+		t="Elija un nombre para este equipo en la red.\n\nEn una red administrada, pida un nombre adecuado\nal administrador de la red." ;;
+	"Keymap Selection")
+		t="Teclado" ;;
+	"The system console driver for Renux defaults to standard \"US\"\nkeyboard map. Other keymaps can be chosen below.")
+		t="La consola de Renux usa por omisión el teclado \"US\".\nPuede elegir otro teclado a continuación." ;;
+	"Select")
+		t="Elegir" ;;
+	"Test the currently selected keymap")
+		t="Probar el teclado elegido" ;;
+	"Test the keymap by typing letters, numbers, and symbols. Characters\nshould match labels on the keyboard keys. Press Enter to stop testing.")
+		t="Pruebe el teclado escribiendo letras, números y símbolos. Los caracteres\ndeben coincidir con las teclas. Pulse Enter para terminar la prueba." ;;
+	"Press arrows, TAB or ENTER")
+		t="Use las flechas, TAB o ENTER" ;;
+	"Use arrows, SPACE, TAB or ENTER")
+		t="Use las flechas, ESPACIO, TAB o ENTER" ;;
+	"Press OK to continue")
+		t="Pulse OK para continuar" ;;
+	"Network Configuration")
+		t="Configuración de la red" ;;
+	"No network interfaces present to configure.")
+		t="No hay interfaces de red para configurar." ;;
+	"Auto")
+		t="Automático" ;;
+	"Please select a network interface and configuration mode:")
+		t="Elija una interfaz de red y el modo de configuración:" ;;
+	"Would you like to configure IPv4 for this interface?")
+		t="¿Desea configurar IPv4 en esta interfaz?" ;;
+	"Would you like to configure IPv6 for this interface?")
+		t="¿Desea configurar IPv6 en esta interfaz?" ;;
+	"Resolver Configuration")
+		t="Servidores de nombres (DNS)" ;;
+	"Search")
+		t="Dominio de búsqueda" ;;
+	"Nameserver")
+		t="Servidor de nombres" ;;
+	"Would you like to use DHCP to configure this interface?")
+		t="¿Desea usar DHCP para configurar esta interfaz?" ;;
+	"Acquiring DHCP lease...")
+		t="Solicitud de dirección por DHCP en curso..." ;;
+	"DHCP lease acquisition failed.")
+		t="No se pudo obtener una dirección por DHCP." ;;
+	"Static Network Interface Configuration")
+		t="Configuración fija de la interfaz" ;;
+	"IP Address")
+		t="Dirección IP" ;;
+	"Subnet Mask")
+		t="Máscara de subred" ;;
+	"Default Router")
+		t="Enrutador predeterminado" ;;
+	"Would you like to try stateless address autoconfiguration (SLAAC)?")
+		t="¿Desea intentar la configuración automática de dirección (SLAAC)?" ;;
+	"Would you like to try stateless address autoconfiguration (SLAAC) again?")
+		t="¿Desea intentar de nuevo la configuración automática de dirección (SLAAC)?" ;;
+	"Sending Router Solicitation ...")
+		t="Búsqueda de enrutador en curso..." ;;
+	"SLAAC failed.")
+		t="La configuración automática (SLAAC) falló." ;;
+	"Static IPv6 Network Interface Configuration")
+		t="Configuración fija de IPv6" ;;
+	"IPv6 Address")
+		t="Dirección IPv6" ;;
+	"Set root password")
+		t="Contraseña del administrador (root)" ;;
+	"Skip")
+		t="Omitir" ;;
+	"Password")
+		t="Contraseña" ;;
+	"Repeat password")
+		t="Repita la contraseña" ;;
+	"System Configuration")
+		t="Configuración del sistema" ;;
+	"Choose the services you would like to be started at boot:")
+		t="Elija los servicios que se inician con el sistema:" ;;
+	"Secure shell daemon")
+		t="Acceso remoto seguro (SSH)" ;;
+	"Synchronize system and network time")
+		t="Sincronizar el reloj por la red" ;;
+	"Sync time on ntpd startup, even if offset is high")
+		t="Ajustar el reloj al iniciar, aunque la diferencia sea grande" ;;
+	"Local caching validating resolver")
+		t="Resolución de nombres local, con caché y validación" ;;
+	"Adjust CPU frequency dynamically if supported")
+		t="Ajustar la frecuencia del procesador, si es posible" ;;
+	"PS/2 mouse pointer on console")
+		t="Puntero del ratón/mouse PS/2 en la consola" ;;
+	"Enable kernel crash dumps to /var/crash")
+		t="Guardar los fallos del kernel en /var/crash" ;;
+	"System Hardening")
+		t="Seguridad del sistema" ;;
+	"Choose system security hardening options:")
+		t="Elija las opciones de seguridad del sistema:" ;;
+	"Hide processes running as other users")
+		t="Ocultar los procesos de otras cuentas" ;;
+	"Hide processes running as other groups")
+		t="Ocultar los procesos de otros grupos" ;;
+	"Hide processes running in jails")
+		t="Ocultar los procesos en jails" ;;
+	"Disable reading kernel message buffer for unprivileged users")
+		t="Impedir que las cuentas comunes lean los mensajes del kernel" ;;
+	"Disable process debugging facilities for unprivileged users")
+		t="Impedir que las cuentas comunes depuren procesos" ;;
+	"Randomize the PID of newly created processes")
+		t="Números de proceso (PID) aleatorios" ;;
+	"Clean the /tmp filesystem on system startup")
+		t="Limpiar /tmp al iniciar el sistema" ;;
+	"Disable opening Syslogd network socket (disables remote logging)")
+		t="Desactivar la red en syslogd (sin envío de registros por la red)" ;;
+	"Enable console password prompt")
+		t="Pedir contraseña en la consola" ;;
+	"Disallow DTrace destructive-mode")
+		t="Prohibir el modo destructivo de DTrace" ;;
+	"Final Configuration")
+		t="Configuración final" ;;
+	"Setup of your Renux system is nearly complete. You can now modify your configuration choices. After this screen, you will have an opportunity to make more complex changes using a shell.")
+		t="La configuración de Renux está casi completa. Ahora puede revisar lo que eligió. Después de este paso, podrá hacer cambios más complejos en una shell." ;;
+	"Apply configuration and exit installer")
+		t="Terminar: aplicar la configuración y salir" ;;
+	"Add a user to the system")
+		t="Crear una cuenta de acceso" ;;
+	"Change root password")
+		t="Cambiar la contraseña del administrador (root)" ;;
+	"Set system hostname")
+		t="Cambiar el nombre del sistema" ;;
+	"Networking configuration")
+		t="Configurar la red" ;;
+	"Set daemons to run on startup")
+		t="Servicios que se inician con el sistema" ;;
+	"Set security options")
+		t="Opciones de seguridad" ;;
+	"Set system timezone")
+		t="Zona horaria" ;;
+	"Install Firmware (requires network)")
+		t="Instalar firmware (requiere red)" ;;
+	"Install Renux Handbook (requires network)")
+		t="Instalar el manual (requiere red)" ;;
+	"Time & Date")
+		t="Fecha y hora" ;;
+	"Set Date")
+		t="Fijar la fecha" ;;
+	"Set Time")
+		t="Fijar la hora" ;;
+	"Boot Configuration")
+		t="Configuración del arranque" ;;
+	"One or more \"Renux\" EFI boot manager entries already exist. Would you like to remove them all and add a new one?")
+		t="Ya existen entradas \"Renux\" en el arranque EFI. ¿Desea eliminarlas y crear una nueva?" ;;
+	"Checksum Verification")
+		t="Verificación de los datos" ;;
+	"\nVerifying checksums of selected distributions.\n")
+		t="\nVerificación de la integridad de los componentes elegidos.\n" ;;
+	"Failed to automatically configure interface (tried "*").")
+		# What was tried: sed, for sh(1) takes a ")" in ${...} in a
+		# case item for the end of the pattern.
+		x=$(printf '%s' "$1" | sed 's/.*tried //; s/)\.$//')
+		t="No se pudo configurar la interfaz automáticamente (intentos: $x)." ;;
+	"The password cannot be empty")	t="La contraseña no puede quedar vacía" ;;
+	"The passwords do not match")	t="Las contraseñas no coinciden" ;;
+	"Please select a password for the system management account (root)"*)
+		# The rest is a newline and the last error, if any.
+		r=$(printf '%s\n' "$1" | sed '1d')
+		renux_tr "$r" && r=$t
+		t="Elija una contraseña para la cuenta de administración del sistema (root)
+$r" ;;
+	"Cancel")	t="Cancelar" ;;
+	"Renux Firmware Installation")	t="Instalación de firmware" ;;
+	"No firmware to install, continuing...")	t="No hay firmware que instalar; la instalación continúa..." ;;
+	"Installing firmware. This may take a moment.")	t="Instalación del firmware en curso; puede tardar un poco." ;;
+	*)	return 1 ;;
+	esac
+}

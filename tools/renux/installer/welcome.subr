@@ -1,0 +1,107 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# The Renux installer's welcome, which bsdinstall's startbsdinstall runs in
+# place of its own: the installer's language (English, Spanish or
+# Portuguese), then a menu to install, read the release notes, read about
+# Renux, use the live system or a shell, reboot or shut down.
+#
+# The language stays for the rest of the installer: RENUX_LANG_FILE names
+# its catalog, and the bsddialog of bin/, first in PATH, translates the
+# dialogs of bsdinstall's scripts with it.
+#
+# renux_welcome returns as startbsdinstall's welcome dialog: BSDDIALOG_OK to
+# install, BSDDIALOG_CANCEL for the live system, BSDDIALOG_EXTRA for a shell.
+
+RENUX_INSTALLER=/usr/libexec/renux-installer
+
+renux_language()
+{
+	local lang
+
+	exec 5>&1
+	lang=$(/usr/bin/bsddialog --backtitle "Renux" \
+	    --title "Language / Idioma" --no-cancel --no-tags \
+	    --menu "Choose the installer's language.\nElija el idioma del instalador.\nEscolha o idioma do instalador." \
+	    0 0 0 \
+	    en "English" \
+	    es "Español" \
+	    pt "Português" \
+	    2>&1 1>&5)
+	exec 5>&-
+	RENUX_LANG=${lang:-en}
+	RENUX_LANG_FILE=$RENUX_INSTALLER/lang/$RENUX_LANG
+	export RENUX_LANG RENUX_LANG_FILE
+}
+
+renux_welcome()
+{
+	local choice
+
+	# UTF-8, for the accents of the translations.
+	LANG=C.UTF-8
+	PATH=$RENUX_INSTALLER/bin:$PATH
+	# Renux installs from its distribution sets, never from FreeBSD's
+	# packages.
+	BSDINSTALL_NO_PKGBASE=yes
+	export LANG PATH BSDINSTALL_NO_PKGBASE
+
+	# Asked once: the shell and the live system come back here.
+	[ -n "$RENUX_LANG_FILE" ] || renux_language
+	. "$RENUX_LANG_FILE"
+
+	while true; do
+		exec 5>&1
+		choice=$(bsddialog --backtitle "$msg_installer" \
+		    --title "$msg_welcome_title" --no-cancel --no-tags \
+		    --menu "$msg_welcome_text" 0 0 0 \
+		    install "$msg_menu_install" \
+		    notes "$msg_menu_notes" \
+		    about "$msg_menu_about" \
+		    language "$msg_menu_language" \
+		    live "$msg_menu_live" \
+		    shell "$msg_menu_shell" \
+		    reboot "$msg_menu_reboot" \
+		    poweroff "$msg_menu_poweroff" \
+		    2>&1 1>&5)
+		exec 5>&-
+		case "$choice" in
+		install)
+			return $BSDDIALOG_OK
+			;;
+		notes)
+			bsddialog --backtitle "$msg_installer" \
+			    --title "$msg_menu_notes" \
+			    --textbox "$RENUX_INSTALLER/notes/$RENUX_LANG" 0 0
+			;;
+		about)
+			bsddialog --backtitle "$msg_installer" \
+			    --title "$msg_menu_about" --msgbox "$msg_about_text" 0 0
+			;;
+		language)
+			renux_language
+			. "$RENUX_LANG_FILE"
+			;;
+		live)
+			return $BSDDIALOG_CANCEL
+			;;
+		shell)
+			return $BSDDIALOG_EXTRA
+			;;
+		reboot)
+			reboot
+			while true; do sleep 1; done
+			;;
+		poweroff)
+			shutdown -p now
+			while true; do sleep 1; done
+			;;
+		esac
+	done
+}

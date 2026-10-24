@@ -1,0 +1,48 @@
+Renux 0.1-CURRENT "Aurora" - Notas de la versión
+
+Renux es un sistema operativo de uso general, fácil de mantener y
+portable, compilado solo con Zig: instale Zig y compile el sistema
+entero.
+
+Esta es la primera versión de prueba (snapshot) de Renux.  Es
+experimental: no la instale en un equipo con datos importantes.
+
+
+Qué incluye
+
+  - El kernel, el cargador EFI y todos los programas del sistema se
+    compilan con `zig build` desde el código fuente de Renux, con
+    Zig 0.17 como compilador.
+  - Renux se basa en FreeBSD 15.1 y sigue su desarrollo.
+  - El instalador está en inglés, español y portugués, y trae estas
+    notas de la versión.  Configura la red y puede instalar el gestor
+    de paquetes (pkg) por Internet, para que "pkg install" funcione
+    desde el primer arranque.
+  - La consola:
+      - el cursor de texto es un subrayado;
+      - los programas de pantalla completa (vi, less, htop) usan una
+        pantalla propia y devuelven la anterior al salir;
+      - clear también borra el historial.
+  - El inicio de sesión da la bienvenida a Renux.
+
+
+Limitaciones conocidas
+
+  - Solo amd64 y UEFI: Renux no arranca por BIOS (CSM, Legacy).
+  - Solo UFS: el kernel aún no tiene módulos, así que no hay ZFS y
+    faltan los controladores que FreeBSD distribuye como módulos
+    (algunas tarjetas Wi-Fi, por ejemplo).
+  - Algunos pasos del instalador siguen en inglés: el editor de
+    particiones, la extracción del sistema, la zona horaria y la
+    creación de cuentas.
+  - El sistema instalado aún no tiene compilador: Zig será su
+    compilador.
+
+
+Más información
+
+  Sitio web:       https://renuxproject.github.io/
+  Código fuente:   https://github.com/renuxproject/renux
+  Licencia:        el trabajo de Renux está bajo la Mozilla Public
+                   License 2.0; el código de FreeBSD, bajo las
+                   licencias BSD.

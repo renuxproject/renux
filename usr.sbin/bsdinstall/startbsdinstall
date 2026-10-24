@@ -1,4 +1,10 @@
 #!/bin/sh
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# Renux's changes to this file are under the Mozilla Public License,
+# v. 2.0: https://mozilla.org/MPL/2.0/.
 
 BSDCFG_SHARE="/usr/share/bsdconfig"
 . $BSDCFG_SHARE/common.subr || exit 1
@@ -60,7 +66,14 @@ if [ -f /etc/installerconfig ]; then
 	exit 
 fi
 
-bsddialog --backtitle "${OSNAME} Installer" --title "Welcome" --extra-button --extra-label "Shell" --ok-label "Install" --cancel-label "Live System" --yesno "Welcome to ${OSNAME}! Would you like to begin an installation or use the live system?" 0 0
+# Renux: the installer's own welcome (its language, the release notes...),
+# where it is installed.
+if [ -r /usr/libexec/renux-installer/welcome.subr ]; then
+	. /usr/libexec/renux-installer/welcome.subr
+	renux_welcome
+else
+	bsddialog --backtitle "${OSNAME} Installer" --title "Welcome" --extra-button --extra-label "Shell" --ok-label "Install" --cancel-label "Live System" --yesno "Welcome to ${OSNAME}! Would you like to begin an installation or use the live system?" 0 0
+fi
 
 case $? in
 $BSDDIALOG_OK)	# Install

@@ -198,11 +198,11 @@ pub fn build(b: *Build) void {
             .optimize = .ReleaseSafe,
         }),
     });
-    const image: Build.LazyPath = medium(b, image_exe, "disk", "renux.img", w, k, l, machine, config, .{ .string = w.mkimg });
+    const image: Build.LazyPath = medium(b, image_exe, "disk", "renux.img", w, k, l, machine, config, .{ .string = w.mkimg }, null);
     const install_image: *Build.Step.InstallFile = b.addInstallFile(image, b.fmt("renux-{s}-{s}.img", .{ renux_version, machine.name() }));
     const image_step: *Build.Step = b.step("image", "Make a bootable disk in zig-out/renux-<version>-<machine>.img");
     image_step.dependOn(&install_image.step);
-    const iso: Build.LazyPath = medium(b, image_exe, "iso", "renux.iso", w, k, l, machine, config, .{ .file = b.path("release/rc.local") });
+    const iso: Build.LazyPath = medium(b, image_exe, "iso", "renux.iso", w, k, l, machine, config, .{ .file = b.path("release/rc.local") }, b.path("tools/renux/installer"));
     const install_iso: *Build.Step.InstallFile = b.addInstallFile(iso, b.fmt("renux-{s}-{s}-installer.iso", .{ renux_version, machine.name() }));
     const iso_step: *Build.Step = b.step("iso", "Make the installer ISO in zig-out/renux-<version>-<machine>-installer.iso");
     iso_step.dependOn(&install_iso.step);
@@ -252,6 +252,8 @@ fn medium(
     machine: Machine,
     config: machine_mod.Config,
     last: LastArg,
+    /// The ISO's: the Renux installer's welcome, languages and notes.
+    installer: ?Build.LazyPath,
 ) Build.LazyPath {
     const run: *Build.Step.Run = b.addRunArtifact(image_exe);
     run.addArg(kind);
@@ -268,6 +270,7 @@ fn medium(
         .string => |str| run.addArg(str),
         .file => |file| run.addFileArg(file),
     }
+    if (installer) |dir| run.addDirectoryArg(dir);
     // The world is outside the Zig build's view: make the medium again
     // whenever it is asked for.
     run.has_side_effects = true;

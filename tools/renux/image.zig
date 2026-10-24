@@ -10,7 +10,7 @@
 // image.zig - Renux's media: a bootable disk, and an installer ISO.
 //
 //   image disk OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT MKIMG
-//   image iso  OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT RCLOCAL
+//   image iso  OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT RCLOCAL INSTALLER
 //
 // disk: a GPT disk, an EFI system partition holding the loader and a UFS
 // root holding the world, the kernel and what the loader reads from /boot
@@ -18,7 +18,8 @@
 //
 // iso: FreeBSD's disc1 (release/Makefile, release/amd64/mkisoimages.sh): a
 // CD that boots by UEFI into the live system, which starts the installer
-// (bsdinstall, named Renux by OSNAME); the installer configures the disk
+// (bsdinstall, named Renux by OSNAME, with Renux's welcome and languages,
+// INSTALLER, in /usr/libexec/renux-installer); the installer configures the disk
 // and the network and installs the distribution sets base.txz and
 // kernel.txz from /usr/freebsd-dist.  The sets are made by bsdtar from
 // the METALOG, as FreeBSD's packageworld does.
@@ -100,6 +101,20 @@ fn pathLess(_: void, a: []const u8, b: []const u8) bool {
     return mem.order(u8, a_path, b_path) == .lt;
 }
 
+/// A line of the METALOG without its size=: makefs and bsdtar take that
+/// many bytes of the file, and a file replaced after installworld (a
+/// script of bsdinstall Renux changed) would be cut.
+fn withoutSize(line: []const u8) []const u8 {
+    var out: std.ArrayList(u8) = .empty;
+    var it: mem.TokenIterator(u8, .scalar) = mem.tokenizeScalar(u8, line, ' ');
+    while (it.next()) |word| {
+        if (mem.startsWith(u8, word, "size=")) continue;
+        if (out.items.len > 0) out.append(gpa, ' ') catch @panic("OOM");
+        out.appendSlice(gpa, word) catch @panic("OOM");
+    }
+    return out.items;
+}
+
 /// The METALOG's entries, in an order makefs takes: installworld writes
 /// them as it installs, and a file may come before its directory.  The
 /// debug files (/usr/lib/debug) stay out of the disk, as in FreeBSD's
@@ -114,7 +129,7 @@ fn appendMetalog(spec: *std.ArrayList(u8), metalog: []const u8) void {
             continue;
         }
         if (mem.startsWith(u8, line, "./usr/lib/debug/")) continue;
-        lines.append(gpa, line) catch @panic("OOM");
+        lines.append(gpa, withoutSize(line)) catch @panic("OOM");
     }
     mem.sort([]const u8, lines.items, {}, pathLess);
     for (lines.items) |line| spec.print(gpa, "{s}\n", .{line}) catch @panic("OOM");
@@ -263,8 +278,23 @@ fn distSet(stage: []const u8, dist: []const u8, name: []const u8, dir: []const u
     return fmt.allocPrint(gpa, "{s}.txz\t{x}\t{d}\t{s}\t\"{s}\"\ton\n", .{ name, digest, entries(spec), name, desc }) catch @panic("OOM");
 }
 
+/// The files of a directory of the tree in the root, under path, with mode
+/// for files: the Renux installer's welcome, catalogs and notes.
+fn addDir(spec: *std.ArrayList(u8), source: []const u8, path: []const u8, file_mode: []const u8) void {
+    entry(spec, path, "0755", null);
+    var dir: Io.Dir = Io.Dir.cwd().openDir(io, source, .{ .iterate = true }) catch |err| fatal("{s}: {t}", .{ source, err });
+    defer dir.close(io);
+    var it: Io.Dir.Iterator = dir.iterate();
+    while (it.next(io) catch |err| fatal("{s}: {t}", .{ source, err })) |e| {
+        if (e.kind != .file) continue;
+        const sub: []const u8 = fmt.allocPrint(gpa, "{s}/{s}", .{ path, e.name }) catch @panic("OOM");
+        const from: []const u8 = fs.path.join(gpa, &.{ source, e.name }) catch @panic("OOM");
+        entry(spec, sub, file_mode, readFile(from));
+    }
+}
+
 /// The installer ISO.
-fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8) void {
+fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, installer: []const u8) void {
     const label: []const u8 = "RENUX_INSTALL";
     const dist: []const u8 = fmt.allocPrint(gpa, "{s}/dist", .{stage}) catch @panic("OOM");
     Io.Dir.cwd().createDirPath(io, dist) catch |err| fatal("{s}: {t}", .{ dist, err });
@@ -299,7 +329,7 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8) void 
     }
     // The CD is the root, read-only (release/Makefile, disc1).
     entry(&spec, "etc/fstab", "0644", fmt.allocPrint(gpa, "/dev/iso9660/{s} / cd9660 ro 0 0\n", .{label}) catch @panic("OOM"));
-    entry(&spec, "etc/rc.conf", "0644", "hostname=\"renux-installer\"\nhostid_enable=\"NO\"\n");
+    entry(&spec, "etc/rc.conf", "0644", "hostname=\"renux\"\nhostid_enable=\"NO\"\n");
     entry(&spec, "boot/loader.conf", "0644", fmt.allocPrint(gpa,
         \\vfs.root.mountfrom="cd9660:/dev/iso9660/{s}"
         \\vfs.mountroot.timeout="10"
@@ -313,6 +343,14 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8) void 
     const rc: []u8 = readFile(rc_local);
     const first: usize = if (mem.startsWith(u8, rc, "#!")) (mem.indexOfScalar(u8, rc, '\n') orelse rc.len - 1) + 1 else 0;
     entry(&spec, "etc/rc.local", "0644", mem.concat(gpa, u8, &.{ rc[0..first], "OSNAME=Renux; export OSNAME\n", rc[first..] }) catch @panic("OOM"));
+    // The Renux installer's welcome, languages and release notes, which
+    // bsdinstall's startbsdinstall runs.
+    const libexec: []const u8 = "usr/libexec/renux-installer";
+    entry(&spec, libexec, "0755", null);
+    entry(&spec, libexec ++ "/welcome.subr", "0444", readFile(fs.path.join(gpa, &.{ installer, "welcome.subr" }) catch @panic("OOM")));
+    addDir(&spec, fs.path.join(gpa, &.{ installer, "bin" }) catch @panic("OOM"), libexec ++ "/bin", "0555");
+    addDir(&spec, fs.path.join(gpa, &.{ installer, "lang" }) catch @panic("OOM"), libexec ++ "/lang", "0444");
+    addDir(&spec, fs.path.join(gpa, &.{ installer, "notes" }) catch @panic("OOM"), libexec ++ "/notes", "0444");
     const spec_path: []const u8 = writeSpec(stage, "iso.mtree", spec);
 
     // UEFI boot by El Torito (release/amd64/mkisoimages.sh).
@@ -327,7 +365,7 @@ pub fn main(init: process.Init) void {
     io = init.io;
     gpa = init.arena.allocator();
     const args: []const [:0]const u8 = init.minimal.args.toSlice(gpa) catch @panic("OOM");
-    if (args.len != 13) fatal("usage: image disk|iso OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT MKIMG|RCLOCAL", .{});
+    if (args.len < 13) fatal("usage: image disk|iso OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT MKIMG|RCLOCAL INSTALLER", .{});
     const p: Parts = .{
         .makefs = args[4],
         .destdir = args[5],
@@ -341,6 +379,6 @@ pub fn main(init: process.Init) void {
     const out: []const u8 = args[2];
     const stage: []const u8 = args[3];
     if (mem.eql(u8, args[1], "disk")) return disk(out, stage, p, args[12]);
-    if (mem.eql(u8, args[1], "iso")) return iso(out, stage, p, absolute(args[12]));
+    if (mem.eql(u8, args[1], "iso") and args.len == 14) return iso(out, stage, p, absolute(args[12]), absolute(args[13]));
     fatal("unknown medium {s}", .{args[1]});
 }

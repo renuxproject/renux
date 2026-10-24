@@ -73,6 +73,8 @@ msg_shell="Shell"
 msg_shell_desc="Open a shell and partition by hand"
 msg_shell_help="Create customized partitions using command-line utilities"
 msg_yes="YES"
+# Renux: the installer's language (welcome.subr) overrides these.
+[ -r "$RENUX_LANG_FILE" ] && . "$RENUX_LANG_FILE"
 
 ############################################################ FUNCTIONS
 
@@ -213,6 +215,9 @@ fi
 
 if [ ! -f $BSDINSTALL_DISTDIR/MANIFEST ]; then
 	PKGBASE=yes
+elif [ -n "$BSDINSTALL_NO_PKGBASE" ]; then
+	# Renux: distribution sets only, there is no package repository.
+	unset PKGBASE
 else
 	bsddialog --backtitle "$OSNAME Installer" --title "Select Installation Type" \
 		--yes-label "Distribution Sets" --no-label "Packages (Tech Preview)" --yesno \
@@ -459,6 +464,9 @@ trap true SIGINT	# This section is optional
 if [ "$NETCONFIG_DONE" != yes ]; then
 	bsdinstall netconfig	# Don't check for errors -- the user may cancel
 fi
+# Renux: the package manager, from the Internet, in the new system.
+[ -z "$BSDINSTALL_SKIP_PKG" ] && [ -x /usr/libexec/renux-installer/bin/renux-pkg ] && \
+    /usr/libexec/renux-installer/bin/renux-pkg
 [ -z "$BSDINSTALL_SKIP_TIME" ] && bsdinstall time
 [ -z "$BSDINSTALL_SKIP_SERVICES" ] && bsdinstall services
 [ -z "$BSDINSTALL_SKIP_HARDENING" ] && bsdinstall hardening

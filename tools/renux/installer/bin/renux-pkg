@@ -1,0 +1,52 @@
+#!/bin/sh
+#
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# The package manager in the new system, from the Internet: bsdinstall's
+# auto runs this after netconfig.  pkg(7) bootstraps pkg(8) in the new
+# system (its keys and its repository, FreeBSD's, are in the base
+# system), and fetches the catalog, so that "pkg install" works there
+# from the first boot, with no bootstrap.  Without a working connection
+# it says how to do it later.
+
+: ${BSDDIALOG_OK=0}
+[ -r "$RENUX_LANG_FILE" ] && . "$RENUX_LANG_FILE"
+
+CHROOT=${BSDINSTALL_CHROOT:-/mnt}
+LOG=${BSDINSTALL_LOG:-/tmp/bsdinstall_log}
+backtitle=${msg_installer:-Renux Installer}
+title=${msg_pkg_title:-Package Manager}
+
+bsddialog --backtitle "$backtitle" --title "$title" --yesno \
+    "${msg_pkg_ask:-Would you like to install the package manager (pkg) from the Internet now?\n\nThe new system will then install software with \"pkg install\" from its first boot, with no bootstrap.}" \
+    0 0 || exit 0
+
+# The network netconfig set up, in the new system: its name servers, and
+# the devices fetching needs.
+[ -f /tmp/bsdinstall_etc/resolv.conf ] && cp /tmp/bsdinstall_etc/resolv.conf "$CHROOT/etc/resolv.conf"
+devfs=no
+if [ ! -c "$CHROOT/dev/null" ]; then
+	mount -t devfs devfs "$CHROOT/dev" && devfs=yes
+fi
+
+bsddialog --backtitle "$backtitle" --title "$title" --infobox \
+    "${msg_pkg_installing:-Installing the package manager (pkg) from the Internet...}" 0 0
+if chroot "$CHROOT" env ASSUME_ALWAYS_YES=yes pkg bootstrap -f >> "$LOG" 2>&1; then
+	# The catalog too; pkg install fetches it anyway if this fails.
+	chroot "$CHROOT" env ASSUME_ALWAYS_YES=yes pkg update -f >> "$LOG" 2>&1
+	bsddialog --backtitle "$backtitle" --title "$title" --msgbox \
+	    "${msg_pkg_done:-The package manager is installed.\n\nIn the new system, install software with:\n\n    pkg install NAME}" 0 0
+else
+	bsddialog --backtitle "$backtitle" --title "$title" --msgbox \
+	    "${msg_pkg_failed:-The package manager could not be installed: is the Internet connection working?\n\nIn the new system, it can be installed later with:\n\n    pkg bootstrap}" 0 0
+fi
+
+[ "$devfs" = yes ] && umount "$CHROOT/dev"
+exit 0
