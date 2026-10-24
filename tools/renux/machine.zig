@@ -41,6 +41,18 @@ pub const Machine: type = enum {
                 .kernel_cflags = "-mcmodel=kernel -mno-red-zone -mno-mmx -mno-sse -msoft-float " ++
                     "-fno-asynchronous-unwind-tables",
                 .kernel_cflags_late = "-mno-aes -mno-avx",
+                .efi_boot = "BOOTX64.EFI",
+                .qemu = "qemu-system-x86_64",
+                .qemu_args = &.{ "-machine", "q35", "-cpu", "max" },
+                // Where hosts keep QEMU's UEFI firmware (EDK II's OVMF).
+                .firmware = &.{
+                    .{ "/usr/share/edk2/x64/OVMF_CODE.4m.fd", "/usr/share/edk2/x64/OVMF_VARS.4m.fd" }, // Arch
+                    .{ "/usr/share/OVMF/OVMF_CODE_4M.fd", "/usr/share/OVMF/OVMF_VARS_4M.fd" }, // Debian, Ubuntu
+                    .{ "/usr/share/edk2/ovmf/OVMF_CODE.fd", "/usr/share/edk2/ovmf/OVMF_VARS.fd" }, // Fedora
+                    .{ "/usr/share/qemu/ovmf-x86_64-code.bin", "/usr/share/qemu/ovmf-x86_64-vars.bin" }, // openSUSE
+                    .{ "/usr/local/share/qemu/edk2-x86_64-code.fd", "/usr/local/share/qemu/edk2-i386-vars.fd" }, // FreeBSD
+                    .{ "/opt/homebrew/share/qemu/edk2-x86_64-code.fd", "/opt/homebrew/share/qemu/edk2-i386-vars.fd" }, // macOS
+                },
             },
             .arm64, .riscv => null,
         };
@@ -64,6 +76,13 @@ pub const Config: type = struct {
     /// common ones, and the last ones before -std.
     kernel_cflags: []const u8,
     kernel_cflags_late: []const u8,
+    /// The loader's name on the EFI system partition, EFI/BOOT/<name>.
+    efi_boot: []const u8,
+    /// QEMU for the machine, and its arguments for a machine to run Renux.
+    qemu: []const u8,
+    qemu_args: []const []const u8,
+    /// QEMU's UEFI firmware, as { code, variables }, where hosts install it.
+    firmware: []const [2][]const u8,
 
     /// The target triple, for the FreeBSD release `revision`.
     pub fn triple(c: Config, b: *Build, revision: []const u8) []const u8 {

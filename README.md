@@ -29,11 +29,21 @@ zig build kconfig      # the kernel configuration, in zig-out/kconfig/GENERIC
 zig build hosttools    # yacc, awk, rpcgen and vtfontcvt, built from this tree
 zig build kernel       # the kernel, in zig-out/boot/kernel
 zig build loader       # the EFI loader and its Lua scripts, in zig-out/boot
+zig build world        # the userland, installed without root in .zig-cache/world
+zig build image        # a bootable disk, zig-out/renux-0.1-CURRENT-amd64.img
+zig build run          # that disk in QEMU, with UEFI firmware
 ```
 
 Zig is the whole toolchain. It compiles the C and assembly of the tree with
 the clang and lld it carries, and builds from the tree every other program
 the build runs, so the result does not depend on the host.
+
+The world is FreeBSD's `buildworld`, run by the bmake Zig builds from the
+tree, with Zig as every compiler.  Its Makefiles still call a few of the
+host's commands (`sh`, `cp`, `find`, `gzip`, `xz`...), as FreeBSD's
+`tools/build` lists them; building those from the tree too is the next
+step.  `zig build run` needs QEMU and its UEFI firmware.  A snapshot is
+made by the `snapshot` workflow on GitHub.
 
 | Option | Effect |
 | ------ | ------ |

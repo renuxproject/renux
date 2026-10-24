@@ -192,15 +192,30 @@ fn buildBmake(b: *Build) *Build.Step.Compile {
     });
     bmake.root_module.addCSourceFile(.{
         .file = b.path("contrib/bmake/main.c"),
-        .flags = mem.concat(b.allocator, []const u8, &.{ flags, &.{
-            b.fmt("-DMAKE_VERSION=\"{s}\"", .{version}),
-            b.fmt("-DMACHINE=\"{s}\"", .{machine}),
-            b.fmt("-DMACHINE_ARCH=\"{s}\"", .{@tagName(host.cpu.arch)}),
-            "-DMAKE_OS=\"\"",
-            "-D_PATH_DEFSYSPATH=\".../share/mk\"",
-        } }) catch @panic("OOM"),
+        .flags = mem.concat(b.allocator, []const u8, &.{
+            flags,
+            &.{
+                b.fmt("-DMAKE_VERSION=\"{s}\"", .{version}),
+                b.fmt("-DMACHINE=\"{s}\"", .{machine}),
+                b.fmt("-DMACHINE_ARCH=\"{s}\"", .{@tagName(host.cpu.arch)}),
+                "-DMAKE_OS=\"\"",
+                // FreeBSD's make rules, in this tree, by their absolute path:
+                // the world's Makefiles run make from directories outside the
+                // tree, and from object directories that have a share/mk of
+                // their own, where a search upwards (".../share/mk") finds
+                // the wrong one.
+                b.fmt("-D_PATH_DEFSYSPATH=\"{s}\"", .{absolutePath(b, "share/mk")}),
+            },
+        }) catch @panic("OOM"),
     });
     return bmake;
+}
+
+/// The absolute path of a file of the tree.
+fn absolutePath(b: *Build, sub_path: []const u8) []const u8 {
+    const path: Build.Cache.Path = b.root.join(b.allocator, sub_path) catch @panic("OOM");
+    return path.root_dir.handle.realPathFileAlloc(b.graph.io, path.subPathOrDot(), b.allocator) catch |err|
+        debug.panic("{s}: {t}", .{ sub_path, err });
 }
 
 /// _MAKE_VERSION of contrib/bmake/VERSION.

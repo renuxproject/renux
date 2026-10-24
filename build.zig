@@ -25,6 +25,14 @@
 //                          (yacc, awk, rpcgen, vtfontcvt, bmake), in
 //                          zig-out/hosttools/
 //   zig build bmake        bmake alone, in zig-out/hosttools/
+//   zig build world        the userland: FreeBSD's buildworld and
+//                          installworld, run by bmake with Zig as the
+//                          compiler, installed without root in the cache
+//   zig build image        a bootable disk: the world, the kernel and the
+//                          loader, in zig-out/renux-<version>-<machine>.img
+//   zig build run          the disk in QEMU, with UEFI firmware (QEMU is
+//                          the one program besides Zig the build may use,
+//                          and only for this step)
 //
 // Options:
 //   -Dkernconf=NAME        kernel configuration, a file of
@@ -49,7 +57,9 @@ const kconfig: type = @import("tools/renux/kconfig.zig");
 const hosttools: type = @import("tools/renux/hosttools.zig");
 const kernel: type = @import("tools/renux/kernel.zig");
 const stand: type = @import("tools/renux/stand.zig");
-const Machine: type = @import("tools/renux/machine.zig").Machine;
+const world: type = @import("tools/renux/world.zig");
+const machine_mod: type = @import("tools/renux/machine.zig");
+const Machine: type = machine_mod.Machine;
 
 /// Each series of Renux is built by one series of Zig, and carries it:
 /// Renux 0.1 by Zig 0.17.x (0.17.0, then its fixes), Renux 0.2 by Zig
@@ -169,9 +179,72 @@ pub fn build(b: *Build) void {
     loader_step.dependOn(&b.addInstallFile(b.path("stand/defaults/loader.conf"), "boot/defaults/loader.conf").step);
     loader_step.dependOn(&b.addInstallFile(b.path(b.fmt("sys/{s}/conf/GENERIC.hints", .{machine.name()})), "boot/device.hints").step);
 
+    // The userland.
+    const w: world.World = world.build(b, .{ .machine = machine, .bmake = tools.bmake, .kgen = kgen });
+    const world_step: *Build.Step = b.step("world", "Build the userland and install it, without root, in the build's cache");
+    world_step.dependOn(w.install);
+
+    // A bootable disk: the world, the kernel and the loader.
+    const config: machine_mod.Config = machine.config().?;
+    const image_exe: *Build.Step.Compile = b.addExecutable(.{
+        .name = "image",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/renux/image.zig"),
+            .target = b.graph.host,
+            .optimize = .ReleaseSafe,
+        }),
+    });
+    const image_run: *Build.Step.Run = b.addRunArtifact(image_exe);
+    const image: Build.LazyPath = image_run.addOutputFileArg("renux.img");
+    _ = image_run.addOutputDirectoryArg("stage");
+    image_run.addArgs(&.{ w.makefs, w.mkimg, w.destdir });
+    image_run.addFileArg(k.kernel);
+    image_run.addFileArg(l.efi);
+    image_run.addDirectoryArg(b.path("stand/lua"));
+    image_run.addFileArg(b.path("stand/defaults/loader.conf"));
+    image_run.addFileArg(b.path(b.fmt("sys/{s}/conf/GENERIC.hints", .{machine.name()})));
+    image_run.addArg(config.efi_boot);
+    // The world is outside the Zig build's view: make the disk again
+    // whenever it is asked for.
+    image_run.has_side_effects = true;
+    image_run.step.dependOn(w.install);
+    const image_name: []const u8 = b.fmt("renux-{s}-{s}.img", .{ renux_version, machine.name() });
+    const install_image: *Build.Step.InstallFile = b.addInstallFile(image, image_name);
+    const image_step: *Build.Step = b.step("image", "Make a bootable disk in zig-out/renux-<version>-<machine>.img");
+    image_step.dependOn(&install_image.step);
+
+    // The disk in QEMU.  -snapshot: what Renux writes is thrown away, and
+    // the firmware's variables too.
+    const run_step: *Build.Step = b.step("run", "Run the disk in QEMU with UEFI firmware");
+    if (findFirmware(b, config)) |firmware| {
+        const qemu: *Build.Step.Run = b.addSystemCommand(&.{config.qemu});
+        qemu.addArgs(config.qemu_args);
+        qemu.addArgs(&.{ "-accel", "kvm", "-accel", "hvf", "-accel", "tcg", "-smp", "2", "-m", "2048", "-snapshot" });
+        qemu.addArgs(&.{ "-drive", b.fmt("if=pflash,format=raw,readonly=on,file={s}", .{firmware[0]}) });
+        qemu.addArgs(&.{ "-drive", b.fmt("if=pflash,format=raw,file={s}", .{firmware[1]}) });
+        qemu.addArg("-drive");
+        qemu.addPrefixedFileArg("if=virtio,format=raw,file=", image);
+        qemu.addArgs(&.{ "-nic", "user,model=virtio-net-pci", "-vga", "std" });
+        qemu.has_side_effects = true;
+        qemu.step.dependOn(&install_image.step);
+        run_step.dependOn(&qemu.step);
+    } else {
+        run_step.dependOn(&b.addFail(b.fmt("no UEFI firmware for {s} found; install QEMU's (EDK II OVMF)", .{config.qemu})).step);
+    }
+
     // `zig build`: the kernel and the loader.
     b.getInstallStep().dependOn(kernel_step);
     b.getInstallStep().dependOn(loader_step);
+}
+
+/// QEMU's UEFI firmware for the machine, where the host has it.
+fn findFirmware(b: *Build, config: machine_mod.Config) ?[2][]const u8 {
+    for (config.firmware) |f| {
+        const code_ok: bool = if (Io.Dir.cwd().access(b.graph.io, f[0], .{})) |_| true else |_| false;
+        const vars_ok: bool = if (Io.Dir.cwd().access(b.graph.io, f[1], .{})) |_| true else |_| false;
+        if (code_ok and vars_ok) return f;
+    }
+    return null;
 }
 
 /// -Dkernconf must name a kernel configuration of sys/<machine>/conf; say

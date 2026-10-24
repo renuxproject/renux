@@ -28,6 +28,12 @@
 //   stand-vers VERSION OUT NAME MACHINE
 //                            stand/common/newvers.sh -r VERSION NAME MACHINE
 //   in DIR PROG ARG...       run PROG in DIR (for generators that write to .)
+//   fresh DIR                remove DIR and what it holds, and create it empty
+//   mkdir DIR                create DIR and its parents
+//   env VAR=VALUE... -- PROG ARG...
+//                            run PROG with VAR set (VAR+=DIR puts DIR first in
+//                            the list VAR); the world's make reads its tools
+//                            from the environment
 
 const std: type = @import("std");
 const mem: type = std.mem;
@@ -42,6 +48,7 @@ const Allocator: type = mem.Allocator;
 
 var io: Io = undefined;
 var gpa: Allocator = undefined;
+var environ: *process.Environ.Map = undefined;
 
 fn fatal(comptime format: []const u8, args: anytype) noreturn {
     debug.print("kgen: " ++ format ++ "\n", args);
@@ -677,6 +684,44 @@ fn vers(out_path: []const u8, srctop: []const u8, ident: []const u8, zig: []cons
     writeFile(out_path, out);
 }
 
+// --- An empty directory -------------------------------------------------------
+
+fn fresh(dir: []const u8) void {
+    Io.Dir.cwd().deleteTree(io, dir) catch |err| fatal("{s}: {t}", .{ dir, err });
+    Io.Dir.cwd().createDirPath(io, dir) catch |err| fatal("{s}: {t}", .{ dir, err });
+}
+
+// --- Running a program with an environment ----------------------------------
+
+/// A path of the build, relative to here, made absolute: the program may
+/// change directory.
+fn absolute(here: []const u8, value: []const u8) []const u8 {
+    if (value.len == 0 or value[0] == '/') return value;
+    if (Io.Dir.cwd().access(io, value, .{})) |_| {
+        return fs.path.join(gpa, &.{ here, value }) catch @panic("OOM");
+    } else |_| return value;
+}
+
+/// Set the variables of vars (VAR=VALUE, or VAR+=DIR to put DIR first in a
+/// list such as PATH), then become argv.
+fn runEnv(vars: []const [:0]const u8, argv: []const [:0]const u8) void {
+    const here: [:0]u8 = process.currentPathAlloc(io, gpa) catch |err| fatal("getcwd: {t}", .{err});
+    for (vars) |v| {
+        const eq: usize = mem.indexOfScalar(u8, v, '=') orelse fatal("env: {s} is not VAR=VALUE", .{v});
+        const prepend: bool = eq > 0 and v[eq - 1] == '+';
+        const name: []const u8 = v[0..if (prepend) eq - 1 else eq];
+        var value: []const u8 = absolute(here, v[eq + 1 ..]);
+        if (prepend) {
+            if (environ.get(name)) |old| value = fmt.allocPrint(gpa, "{s}:{s}", .{ value, old }) catch @panic("OOM");
+        }
+        environ.put(name, value) catch @panic("OOM");
+    }
+    var args: std.ArrayList([]const u8) = .empty;
+    for (argv) |a| args.append(gpa, absolute(here, a)) catch @panic("OOM");
+    const err: process.ReplaceError = process.replace(io, .{ .argv = args.items, .environ_map = environ });
+    fatal("{s}: {t}", .{ argv[0], err });
+}
+
 // --- Running a generator in a directory ------------------------------------
 
 /// Run argv in dir.  The arguments that name files here (the program, its
@@ -704,6 +749,7 @@ fn runIn(dir: []const u8, argv: []const [:0]const u8) void {
 pub fn main(init: process.Init) void {
     io = init.io;
     gpa = init.arena.allocator();
+    environ = init.environ_map;
     const args: []const [:0]const u8 = init.minimal.args.toSlice(gpa) catch @panic("OOM");
     if (args.len < 2) fatal("usage: kgen command args...", .{});
     const cmd: [:0]const u8 = args[1];
@@ -722,5 +768,12 @@ pub fn main(init: process.Init) void {
     if (eql(u8, cmd, "check-undefined") and a.len == 2) return checkUndefined(a[0], a[1]);
     if (eql(u8, cmd, "stand-vers") and a.len == 4) return standVers(a[1], a[0], a[2], a[3]);
     if (eql(u8, cmd, "in") and a.len >= 2) return runIn(a[0], a[1..]);
+    if (eql(u8, cmd, "fresh") and a.len == 1) return fresh(a[0]);
+    if (eql(u8, cmd, "mkdir") and a.len == 1) return Io.Dir.cwd().createDirPath(io, a[0]) catch |err| fatal("{s}: {t}", .{ a[0], err });
+    if (eql(u8, cmd, "env")) {
+        for (a, 0..) |arg, i| {
+            if (eql(u8, arg, "--") and i + 1 < a.len) return runEnv(a[0..i], a[i + 1 ..]);
+        }
+    }
     fatal("unknown command or wrong arguments: {s}", .{cmd});
 }
