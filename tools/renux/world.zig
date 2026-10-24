@@ -114,6 +114,9 @@ pub fn build(b: *Build, opts: Options) World {
     const resource: *Build.Step.WriteFile = b.addWriteFiles();
     _ = resource.addCopyDirectory(b.graph.path(.zig_lib, "include"), "include", .{});
     options.addOptionPathUntracked("resource_dir", resource.getDirectory());
+    // The paths of options are relative to the tree, and the compilers run
+    // in the world's object directories.
+    options.addOption([]const u8, "tree", treeDir(b));
     const zigtools: *Build.Step.Compile = b.addExecutable(.{
         .name = "zigtools",
         .root_module = b.createModule(.{

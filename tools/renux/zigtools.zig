@@ -45,7 +45,13 @@ const Driver: type = struct {
 
 /// Zig's arguments before the caller's, for each name of a compiler.
 fn zigArgs(gpa: Allocator, name: []const u8) ?[]const []const u8 {
-    const resource_dir: []const u8 = fmt.allocPrint(gpa, "-resource-dir={s}", .{options.resource_dir}) catch @panic("OOM");
+    // options.resource_dir may be relative to the tree (options.tree), and
+    // the compilers run elsewhere.
+    const resource: []const u8 = if (fs.path.isAbsolute(options.resource_dir))
+        options.resource_dir
+    else
+        fs.path.join(gpa, &.{ options.tree, options.resource_dir }) catch @panic("OOM");
+    const resource_dir: []const u8 = fmt.allocPrint(gpa, "-resource-dir={s}", .{resource}) catch @panic("OOM");
     const table: []const Driver = &.{
         .{ .name = "cc", .args = &.{"cc"} },
         .{ .name = "c++", .args = &.{"c++"} },
