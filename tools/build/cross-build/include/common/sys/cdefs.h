@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright 2018-2020 Alex Richardson <arichardson@FreeBSD.org>
  *
@@ -32,11 +32,24 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 #pragma once
 /* musl libc does not provide a sys/cdefs.h header */
 #if __has_include_next(<sys/cdefs.h>)
 #include_next <sys/cdefs.h>
+/*
+ * Renux: glibc 2.43 and later make strchr(3), memchr(3), bsearch(3) and
+ * the like return a const pointer when given one (C23), and the tools
+ * built for the host are not ready for it.  Without this macro glibc's
+ * headers declare them as before.
+ */
+#undef __glibc_const_generic
 #else
 /* No sys/cdefs.h header exists so we have to provide some basic macros */
 #ifdef __cplusplus

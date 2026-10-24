@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright 2018-2020 Alex Richardson <arichardson@FreeBSD.org>
  *
@@ -32,8 +32,23 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 #pragma once
+
+/*
+ * Renux: <sys/stat.h> renames st_mtimespec to st_mtim (see sys/stat.h
+ * here).  Include it first, so that the rename applies to every header,
+ * also to those (mtree.h) that declare a field named st_mtimespec before
+ * anything has included <sys/stat.h>: newer glibc headers no longer
+ * include it from <stdlib.h> or <unistd.h>.
+ */
+#include <sys/stat.h>
 
 #define HAVE_ERR_H 1
 #define HAVE_STRUCT_STAT_ST_FLAGS 0

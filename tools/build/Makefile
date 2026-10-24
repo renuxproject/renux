@@ -1,3 +1,9 @@
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# Renux's changes to this file are under the Mozilla Public License,
+# v. 2.0: https://mozilla.org/MPL/2.0/.
+
 .PATH: ${.CURDIR}/../../include
 
 # XXX We need to include this to avoid installing MIT KRB5 includes on
@@ -236,6 +242,10 @@ SRCS+=	progname.c
 # we'd avoid, but in practice these align for many flags, including
 # SF_IMMUTABLE, the only flag we currently set during install.
 SRCS+=	strtofflags.c
+# Renux: b64_ntop/b64_pton for bintrans, from FreeBSD's libc.  glibc keeps
+# them in libresolv, and the glibc Zig links against does not have them.
+.PATH: ${LIBC_SRCTOP}/net
+SRCS+=	base64.c
 
 # macOS has a standalone cross-build implementation, but Linux can use the same
 # ELF one as FreeBSD
