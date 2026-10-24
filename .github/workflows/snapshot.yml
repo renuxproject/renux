@@ -55,13 +55,22 @@ jobs:
           rm "$tarball"
           echo "$RUNNER_TEMP/zig" >> "$GITHUB_PATH"
 
-      # The libraries the world's host tools link against and do not build
-      # from the tree yet: libarchive (ar), OpenSSL (certctl), zlib (the
-      # CTF tools, elfcopy, mandoc...).
-      - name: Host libraries
+      # What the world takes from the host besides Zig, as found by building
+      # it on a Linux host (Arch's packages, here Ubuntu's):
+      # - the commands FreeBSD's tools/build links into the build's PATH
+      #   (hostname and time are zigtools): bash, coreutils, findutils,
+      #   diffutils, sed, grep, gzip, bzip2, xz, patch, which;
+      # - the C library and the Linux headers the host tools compile with;
+      # - the libraries they link against and that are not built from the
+      #   tree yet: libarchive (ar), OpenSSL (certctl), zlib (the CTF tools,
+      #   elfcopy, mandoc, nm...).
+      - name: Host dependencies
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends libarchive-dev libssl-dev zlib1g-dev
+          sudo apt-get install -y -q --no-install-recommends \
+            bash coreutils findutils diffutils sed grep gzip bzip2 xz-utils patch debianutils \
+            libc6-dev linux-libc-dev \
+            libarchive-dev libssl-dev zlib1g-dev
 
       # The world's objects take several GB: make room on the runner.
       - name: Free disk space
