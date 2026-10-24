@@ -25,6 +25,12 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# Renux's changes to this file are under the Mozilla Public License,
+# v. 2.0: https://mozilla.org/MPL/2.0/.
+#
 #
 ############################################################ INCLUDES
 
@@ -375,10 +381,14 @@ PMODES="
 CURARCH=$( uname -m )
 case $CURARCH in
 	amd64|arm64|i386|riscv)	# Booting ZFS Supported
-		PMODES="
-			'$msg_auto_zfs' '$msg_auto_zfs_desc' '$msg_auto_zfs_help'
-			$PMODES
-		" # END-QUOTE
+		# Renux: and only when the kernel has ZFS, built in or as a
+		# module it can load.
+		if kldstat -q -m zfs || kldload -n zfs > /dev/null 2>&1; then
+			PMODES="
+				'$msg_auto_zfs' '$msg_auto_zfs_desc' '$msg_auto_zfs_help'
+				$PMODES
+			" # END-QUOTE
+		fi
 		;;
 	*)			# Booting ZFS Unsupported
 		;;
