@@ -180,6 +180,12 @@ pub fn build(b: *Build) void {
         .install_subdir = "boot/lua",
         .include_extensions = &.{".lua"},
     }).step);
+    loader_step.dependOn(&b.addInstallDirectory(.{
+        .source_dir = b.path("stand/images"),
+        .install_dir = .prefix,
+        .install_subdir = "boot/images",
+        .include_extensions = &.{".png"},
+    }).step);
     loader_step.dependOn(&b.addInstallFile(b.path("stand/defaults/loader.conf"), "boot/defaults/loader.conf").step);
     loader_step.dependOn(&b.addInstallFile(b.path(b.fmt("sys/{s}/conf/GENERIC.hints", .{machine.name()})), "boot/device.hints").step);
 
@@ -218,7 +224,9 @@ pub fn build(b: *Build) void {
         qemu.addArgs(&.{ "-drive", b.fmt("if=pflash,format=raw,file={s}", .{firmware[1]}) });
         qemu.addArg("-drive");
         qemu.addPrefixedFileArg("if=virtio,format=raw,file=", image);
-        qemu.addArgs(&.{ "-nic", "user,model=virtio-net-pci", "-vga", "std" });
+        // No serial port: with one in UEFI's console, the loader keeps to text
+        // and draws no images (stand/efi/libefi/efi_console.c).
+        qemu.addArgs(&.{ "-nic", "user,model=virtio-net-pci", "-vga", "std", "-serial", "none" });
         qemu.has_side_effects = true;
         qemu.step.dependOn(&install_image.step);
         run_step.dependOn(&qemu.step);

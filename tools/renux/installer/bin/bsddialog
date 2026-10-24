@@ -12,13 +12,19 @@
 # bsddialog, in the installer's language.  The installer puts this first
 # in PATH; bsdinstall's scripts call it as they call bsddialog.  Every
 # argument the language's catalog (RENUX_LANG_FILE) knows is replaced by
-# its translation, and the buttons get translated labels, but for what
+# its translation, and the buttons get translated labels (and every
+# dialog Renux's colors, renux.theme), but for what
 # the scripts read back: the tags of menu, checklist and radiolist items,
 # the values of form fields and --default-item stay as they are.
 
 REAL=/usr/bin/bsddialog
+# Renux's colors, in every language.
+THEME=/usr/libexec/renux-installer/renux.theme
 
-[ -r "$RENUX_LANG_FILE" ] || exec "$REAL" "$@"
+if [ ! -r "$RENUX_LANG_FILE" ]; then
+	[ -r "$THEME" ] && exec "$REAL" --load-theme "$THEME" "$@"
+	exec "$REAL" "$@"
+fi
 . "$RENUX_LANG_FILE"
 
 # One argument, quoted for eval.
@@ -113,4 +119,7 @@ case "$dialog" in
 esac
 [ -n "$msg_btn_help" ] && labels="$labels --help-label $(quote "$msg_btn_help")"
 
-eval "exec \"\$REAL\" $labels $args"
+theme=
+[ -r "$THEME" ] && theme="--load-theme $(quote "$THEME")"
+
+eval "exec \"\$REAL\" $theme $labels $args"

@@ -27,6 +27,7 @@ FILES=	cli.lua \
 	gfx-install.lua \
 	gfx-orb.lua \
 	gfx-orbbw.lua \
+	gfx-renux.lua \
 	menu.lua \
 	password.lua \
 	screen.lua

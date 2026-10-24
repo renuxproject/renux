@@ -1,5 +1,5 @@
 /*-
- * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-License-Identifier: BSD-2-Clause AND MPL-2.0
  *
  * Copyright (c) 2021-2025 Alfonso Sabato Siciliano
  *
@@ -23,6 +23,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * Copyright (c) 2026 Renan Lucas Vieira Hilário
+ * Copyright (c) 2026 The Renux Project
+ *
+ * Renux's changes to this file are under the Mozilla Public License,
+ * v. 2.0: https://mozilla.org/MPL/2.0/.
  */
 
 #include <curses.h>
@@ -102,53 +108,57 @@ static struct bsddialog_theme blackwhite = {
 	.button.shortcutcolor   = WHITE | A_UNDERLINE | A_BOLD
 };
 
+/*
+ * Renux: the default theme in the colors of Renux's logo, green and yellow
+ * (FreeBSD's is blue), as tools/renux/installer/renux.theme.
+ */
 static struct bsddialog_theme flat = {
-	.screen.color = GET_COLOR(COLOR_CYAN, COLOR_BLUE) | A_BOLD,
+	.screen.color = GET_COLOR(COLOR_WHITE, COLOR_GREEN) | A_BOLD,
 
 	.shadow.color = GET_COLOR(COLOR_BLACK, COLOR_BLACK),
 	.shadow.y     = 1,
 	.shadow.x     = 2,
 
 	.dialog.delimtitle       = true,
-	.dialog.titlecolor       = GET_COLOR(COLOR_BLUE,  COLOR_WHITE) | A_BOLD,
+	.dialog.titlecolor       = GET_COLOR(COLOR_WHITE, COLOR_GREEN) | A_BOLD,
 	.dialog.lineraisecolor   = GET_COLOR(COLOR_BLACK, COLOR_WHITE),
 	.dialog.linelowercolor   = GET_COLOR(COLOR_BLACK, COLOR_WHITE),
 	.dialog.color            = GET_COLOR(COLOR_BLACK, COLOR_WHITE),
 	.dialog.bottomtitlecolor = GET_COLOR(COLOR_BLACK, COLOR_WHITE) | A_BOLD,
-	.dialog.arrowcolor       = GET_COLOR(COLOR_BLUE,  COLOR_WHITE),
+	.dialog.arrowcolor       = GET_COLOR(COLOR_GREEN, COLOR_WHITE),
 
-	.menu.f_prefixcolor   = GET_COLOR(COLOR_BLACK, COLOR_WHITE),
-	.menu.prefixcolor     = GET_COLOR(COLOR_BLACK, COLOR_WHITE),
-	.menu.f_selectorcolor = GET_COLOR(COLOR_WHITE, COLOR_BLUE),
-	.menu.selectorcolor   = GET_COLOR(COLOR_BLACK, COLOR_WHITE),
-	.menu.f_desccolor     = GET_COLOR(COLOR_WHITE, COLOR_BLUE),
-	.menu.desccolor       = GET_COLOR(COLOR_BLACK, COLOR_WHITE),
-	.menu.f_namecolor     = GET_COLOR(COLOR_WHITE, COLOR_BLUE),
-	.menu.namecolor       = GET_COLOR(COLOR_BLUE,  COLOR_WHITE),
-	.menu.f_shortcutcolor = GET_COLOR(COLOR_RED,   COLOR_BLUE),
-	.menu.shortcutcolor   = GET_COLOR(COLOR_RED,   COLOR_WHITE),
-	.menu.bottomdesccolor = GET_COLOR(COLOR_WHITE, COLOR_BLUE),
-	.menu.sepnamecolor    = GET_COLOR(COLOR_RED,   COLOR_WHITE),
-	.menu.sepdesccolor    = GET_COLOR(COLOR_RED,   COLOR_WHITE),
+	.menu.f_prefixcolor   = GET_COLOR(COLOR_BLACK,  COLOR_WHITE),
+	.menu.prefixcolor     = GET_COLOR(COLOR_BLACK,  COLOR_WHITE),
+	.menu.f_selectorcolor = GET_COLOR(COLOR_WHITE,  COLOR_GREEN) | A_BOLD,
+	.menu.selectorcolor   = GET_COLOR(COLOR_BLACK,  COLOR_WHITE),
+	.menu.f_desccolor     = GET_COLOR(COLOR_WHITE,  COLOR_GREEN) | A_BOLD,
+	.menu.desccolor       = GET_COLOR(COLOR_BLACK,  COLOR_WHITE),
+	.menu.f_namecolor     = GET_COLOR(COLOR_WHITE,  COLOR_GREEN) | A_BOLD,
+	.menu.namecolor       = GET_COLOR(COLOR_BLACK,  COLOR_WHITE),
+	.menu.f_shortcutcolor = GET_COLOR(COLOR_YELLOW, COLOR_GREEN) | A_BOLD,
+	.menu.shortcutcolor   = GET_COLOR(COLOR_GREEN,  COLOR_WHITE),
+	.menu.bottomdesccolor = GET_COLOR(COLOR_WHITE,  COLOR_GREEN) | A_BOLD,
+	.menu.sepnamecolor    = GET_COLOR(COLOR_GREEN,  COLOR_WHITE),
+	.menu.sepdesccolor    = GET_COLOR(COLOR_GREEN,  COLOR_WHITE),
 
-	.form.f_fieldcolor    = GET_COLOR(COLOR_WHITE, COLOR_BLUE) | A_BOLD,
-	.form.fieldcolor      = GET_COLOR(COLOR_WHITE, COLOR_CYAN) | A_BOLD,
-	.form.readonlycolor   = GET_COLOR(COLOR_CYAN,  COLOR_WHITE)| A_BOLD,
-	.form.bottomdesccolor = GET_COLOR(COLOR_WHITE, COLOR_BLUE),
+	.form.f_fieldcolor    = GET_COLOR(COLOR_YELLOW, COLOR_GREEN) | A_BOLD,
+	.form.fieldcolor      = GET_COLOR(COLOR_WHITE,  COLOR_GREEN),
+	.form.readonlycolor   = GET_COLOR(COLOR_BLACK,  COLOR_WHITE) | A_BOLD,
+	.form.bottomdesccolor = GET_COLOR(COLOR_WHITE,  COLOR_GREEN) | A_BOLD,
 
-	.bar.f_color = GET_COLOR(COLOR_WHITE, COLOR_BLUE)  | A_BOLD,
-	.bar.color   = GET_COLOR(COLOR_BLUE,  COLOR_WHITE) | A_BOLD,
+	.bar.f_color = GET_COLOR(COLOR_WHITE, COLOR_GREEN) | A_BOLD,
+	.bar.color   = GET_COLOR(COLOR_BLACK, COLOR_WHITE) | A_BOLD,
 
 	.button.minmargin       = 1,
 	.button.maxmargin       = 5,
 	.button.leftdelim       = '[',
 	.button.rightdelim      = ']',
-	.button.f_delimcolor    = GET_COLOR(COLOR_WHITE,  COLOR_BLUE)  | A_BOLD,
+	.button.f_delimcolor    = GET_COLOR(COLOR_WHITE,  COLOR_GREEN) | A_BOLD,
 	.button.delimcolor      = GET_COLOR(COLOR_BLACK,  COLOR_WHITE),
-	.button.f_color         = GET_COLOR(COLOR_YELLOW, COLOR_BLUE)  | A_BOLD,
+	.button.f_color         = GET_COLOR(COLOR_YELLOW, COLOR_GREEN) | A_BOLD,
 	.button.color           = GET_COLOR(COLOR_BLACK,  COLOR_WHITE),
-	.button.f_shortcutcolor = GET_COLOR(COLOR_WHITE,  COLOR_BLUE)  | A_BOLD,
-	.button.shortcutcolor   = GET_COLOR(COLOR_RED,    COLOR_WHITE) | A_BOLD
+	.button.f_shortcutcolor = GET_COLOR(COLOR_WHITE,  COLOR_GREEN) | A_BOLD,
+	.button.shortcutcolor   = GET_COLOR(COLOR_GREEN,  COLOR_WHITE)
 };
 
 static void

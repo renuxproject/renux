@@ -198,6 +198,19 @@ fn addBoot(spec: *std.ArrayList(u8), p: Parts) void {
     entry(spec, "boot/defaults", "0755", null);
     entry(spec, "boot/defaults/loader.conf", "0444", readFile(p.defaults));
     entry(spec, "boot/device.hints", "0444", readFile(p.hints));
+    // The images the boot menu draws on a framebuffer: stand/images,
+    // beside stand/lua.
+    const images: []const u8 = fs.path.join(gpa, &.{ fs.path.dirname(p.lua).?, "images" }) catch @panic("OOM");
+    entry(spec, "boot/images", "0755", null);
+    var images_dir: Io.Dir = Io.Dir.cwd().openDir(io, images, .{ .iterate = true }) catch |err| fatal("{s}: {t}", .{ images, err });
+    defer images_dir.close(io);
+    var images_it: Io.Dir.Iterator = images_dir.iterate();
+    while (images_it.next(io) catch |err| fatal("{s}: {t}", .{ images, err })) |e| {
+        if (e.kind != .file or !mem.endsWith(u8, e.name, ".png")) continue;
+        const path: []const u8 = fmt.allocPrint(gpa, "boot/images/{s}", .{e.name}) catch @panic("OOM");
+        const source: []const u8 = fs.path.join(gpa, &.{ images, e.name }) catch @panic("OOM");
+        entry(spec, path, "0444", readFile(source));
+    }
     entry(spec, "boot/lua", "0755", null);
     var lua_dir: Io.Dir = Io.Dir.cwd().openDir(io, p.lua, .{ .iterate = true }) catch |err| fatal("{s}: {t}", .{ p.lua, err });
     defer lua_dir.close(io);
@@ -335,6 +348,7 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
         \\vfs.mountroot.timeout="10"
         \\kernels_autodetect="NO"
         \\loader_menu_multi_user_prompt="Installer"
+        \\loader_menu_title="Renux Installer"
         \\
     , .{label}) catch @panic("OOM"));
     // The network configuration of the installer goes to /tmp.
@@ -348,6 +362,7 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
     const libexec: []const u8 = "usr/libexec/renux-installer";
     entry(&spec, libexec, "0755", null);
     entry(&spec, libexec ++ "/welcome.subr", "0444", readFile(fs.path.join(gpa, &.{ installer, "welcome.subr" }) catch @panic("OOM")));
+    entry(&spec, libexec ++ "/renux.theme", "0444", readFile(fs.path.join(gpa, &.{ installer, "renux.theme" }) catch @panic("OOM")));
     addDir(&spec, fs.path.join(gpa, &.{ installer, "bin" }) catch @panic("OOM"), libexec ++ "/bin", "0555");
     addDir(&spec, fs.path.join(gpa, &.{ installer, "lang" }) catch @panic("OOM"), libexec ++ "/lang", "0444");
     addDir(&spec, fs.path.join(gpa, &.{ installer, "notes" }) catch @panic("OOM"), libexec ++ "/notes", "0444");

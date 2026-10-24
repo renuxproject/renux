@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# The Renux installer's colors (bsddialog --load-theme): the green and
+# yellow of Renux's logo, in the eight colors of a console.  The same as
+# libbsddialog's default in Renux (contrib/bsddialog/lib/theme.c), for
+# the dialogs of bsdinstall's C parts.
+
+version 1.0
+
+theme.screen.color white green bold
+
+theme.shadow.color black black
+theme.shadow.y 1
+theme.shadow.x 2
+
+theme.dialog.color black white
+theme.dialog.delimtitle true
+theme.dialog.titlecolor white green bold
+theme.dialog.lineraisecolor black white
+theme.dialog.linelowercolor black white
+theme.dialog.bottomtitlecolor black white bold
+theme.dialog.arrowcolor green white
+
+theme.menu.f_prefixcolor black white
+theme.menu.prefixcolor black white
+theme.menu.f_selectorcolor white green bold
+theme.menu.selectorcolor black white
+theme.menu.f_namecolor white green bold
+theme.menu.namecolor black white
+theme.menu.f_desccolor white green bold
+theme.menu.desccolor black white
+theme.menu.f_shortcutcolor yellow green bold
+theme.menu.shortcutcolor green white
+theme.menu.bottomdesccolor white green bold
+theme.menu.sepnamecolor green white
+theme.menu.sepdesccolor green white
+
+theme.form.f_fieldcolor yellow green bold
+theme.form.fieldcolor white green
+theme.form.readonlycolor black white bold
+theme.form.bottomdesccolor white green bold
+
+theme.bar.f_color white green bold
+theme.bar.color black white bold
+
+theme.button.minmargin 1
+theme.button.maxmargin 5
+theme.button.leftdelim [
+theme.button.rightdelim ]
+theme.button.f_delimcolor white green bold
+theme.button.delimcolor black white
+theme.button.f_color yellow green bold
+theme.button.color black white
+theme.button.f_shortcutcolor white green bold
+theme.button.shortcutcolor green white

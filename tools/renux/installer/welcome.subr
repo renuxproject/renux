@@ -26,7 +26,8 @@ renux_language()
 	local lang
 
 	exec 5>&1
-	lang=$(/usr/bin/bsddialog --backtitle "Renux" \
+	# bin/bsddialog, which has no language yet: only Renux's colors.
+	lang=$(bsddialog --backtitle "Renux" \
 	    --title "Language / Idioma" --no-cancel --no-tags \
 	    --menu "Choose the installer's language.\nElija el idioma del instalador.\nEscolha o idioma do instalador." \
 	    0 0 0 \
