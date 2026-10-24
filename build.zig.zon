@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: MPL-2.0
+//
+// Copyright (c) 2026 Renan Lucas Vieira Hilário
+// Copyright (c) 2026 The Renux Project
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// The Renux build as a Zig package.  Its dependencies are what the build
+// takes from outside the tree, fetched and checked by Zig itself: for now,
+// the Zig that Renux carries as its compiler, ziglang.org's build for each
+// machine (one Zig series per Renux series: 0.1 carries 0.17).  They are
+// lazy: only the media (zig build image, iso) fetch them.
+.{
+    .name = .renux,
+    .version = "0.1.0",
+    .fingerprint = 0x717d1145ada540a,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .zig_x86_64_freebsd = .{
+            .url = "https://ziglang.org/download/0.17.0/zig-x86_64-freebsd-0.17.0.tar.xz",
+            .hash = "N-V-__8AAECkUBY-WzykR_SsykSjUM4qxLr1QRitEKkOhUK5",
+            .lazy = true,
+        },
+    },
+    .paths = .{ "build.zig", "build.zig.zon", "tools" },
+}

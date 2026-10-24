@@ -45,4 +45,6 @@ sys/*/compile
 /obj/
 # Renux: the Zig build
 /zig-out/
+# Renux: where Zig extracts the build's dependencies (build.zig.zon).
+/zig-pkg/
 /.zig-cache/

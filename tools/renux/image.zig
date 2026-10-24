@@ -9,8 +9,12 @@
 //
 // image.zig - Renux's media: a bootable disk, and an installer ISO.
 //
-//   image disk OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT MKIMG
-//   image iso  OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT RCLOCAL INSTALLER
+//   image disk OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MKIMG
+//   image iso  OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG RCLOCAL INSTALLER
+//
+// ZIG is the Zig the system carries as its compiler (ziglang.org's build
+// for the machine): /usr/lib/zig, /usr/bin/zig, and cc, c++, cpp, ld,
+// ld.lld, ar and ranlib, which run it.
 //
 // disk: a GPT disk, an EFI system partition holding the loader and a UFS
 // root holding the world, the kernel and what the loader reads from /boot
@@ -180,6 +184,7 @@ const Parts: type = struct {
     defaults: []const u8,
     hints: []const u8,
     efi_boot: []const u8,
+    zig: []const u8,
 };
 
 /// A list of the root: the world's METALOG, sorted.
@@ -223,6 +228,46 @@ fn addBoot(spec: *std.ArrayList(u8), p: Parts) void {
     }
 }
 
+/// The commands of a C toolchain, and what Zig runs for each.
+const toolchain: [7][2][]const u8 = .{
+    .{ "cc", "cc" },
+    .{ "c++", "c++" },
+    .{ "cpp", "cc -E" },
+    .{ "ld", "ld.lld" },
+    .{ "ld.lld", "ld.lld" },
+    .{ "ar", "ar" },
+    .{ "ranlib", "ranlib" },
+};
+
+/// The system's compiler: Zig in /usr/lib/zig, /usr/bin/zig, and the
+/// commands of a C toolchain in /usr/bin, which run it.  On Renux, Zig
+/// compiles C and C++ against the system's own headers and libraries.
+fn addZig(spec: *std.ArrayList(u8), p: Parts) void {
+    entry(spec, "usr/lib/zig", "0755", null);
+    var dir: Io.Dir = Io.Dir.cwd().openDir(io, p.zig, .{ .iterate = true }) catch |err| fatal("{s}: {t}", .{ p.zig, err });
+    defer dir.close(io);
+    var walker: Io.Dir.Walker = dir.walk(gpa) catch @panic("OOM");
+    defer walker.deinit();
+    while (walker.next(io) catch |err| fatal("{s}: {t}", .{ p.zig, err })) |e| {
+        const path: []const u8 = fmt.allocPrint(gpa, "usr/lib/zig/{s}", .{e.path}) catch @panic("OOM");
+        switch (e.kind) {
+            .directory => entry(spec, path, "0755", null),
+            .file => {
+                const source: []const u8 = fs.path.join(gpa, &.{ p.zig, e.path }) catch @panic("OOM");
+                const mode: []const u8 = if (mem.eql(u8, e.path, "zig")) "0555" else "0444";
+                entry(spec, path, mode, readFile(source));
+            },
+            else => {},
+        }
+    }
+    symlinkEntry(spec, "usr/bin/zig", "../lib/zig/zig");
+    for (toolchain) |tool| {
+        const path: []const u8 = fmt.allocPrint(gpa, "usr/bin/{s}", .{tool[0]}) catch @panic("OOM");
+        const script: []const u8 = fmt.allocPrint(gpa, "#!/bin/sh\n# Renux's compiler is Zig.\nexec /usr/bin/zig {s} \"$@\"\n", .{tool[1]}) catch @panic("OOM");
+        entry(spec, path, "0555", script);
+    }
+}
+
 fn addKernel(spec: *std.ArrayList(u8), p: Parts) void {
     entry(spec, "boot", "0755", null);
     entry(spec, "boot/kernel", "0755", null);
@@ -253,6 +298,7 @@ fn disk(out: []const u8, stage: []const u8, p: Parts, mkimg: []const u8) void {
     linkTree(p.destdir, root);
     var spec: std.ArrayList(u8) = worldSpec(p);
     addBoot(&spec, p);
+    addZig(&spec, p);
     addKernel(&spec, p);
     // What a disk needs and the world has not.
     entry(&spec, "etc/fstab", "0644", "# Device\tMountpoint\tFStype\tOptions\tDump\tPass#\n/dev/gpt/rootfs\t/\tufs\trw\t1\t1\n");
@@ -317,6 +363,7 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
     linkTree(p.destdir, root);
     var base: std.ArrayList(u8) = worldSpec(p);
     addBoot(&base, p);
+    addZig(&base, p);
     const base_line: []const u8 = distSet(stage, dist, "base", root, base, "Base system (MANDATORY)");
 
     // kernel.txz: the kernel.
@@ -380,7 +427,7 @@ pub fn main(init: process.Init) void {
     io = init.io;
     gpa = init.arena.allocator();
     const args: []const [:0]const u8 = init.minimal.args.toSlice(gpa) catch @panic("OOM");
-    if (args.len < 13) fatal("usage: image disk|iso OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT MKIMG|RCLOCAL INSTALLER", .{});
+    if (args.len < 14) fatal("usage: image disk|iso OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MKIMG|RCLOCAL INSTALLER", .{});
     const p: Parts = .{
         .makefs = args[4],
         .destdir = args[5],
@@ -390,10 +437,11 @@ pub fn main(init: process.Init) void {
         .defaults = absolute(args[9]),
         .hints = absolute(args[10]),
         .efi_boot = args[11],
+        .zig = absolute(args[12]),
     };
     const out: []const u8 = args[2];
     const stage: []const u8 = args[3];
-    if (mem.eql(u8, args[1], "disk")) return disk(out, stage, p, args[12]);
-    if (mem.eql(u8, args[1], "iso") and args.len == 14) return iso(out, stage, p, absolute(args[12]), absolute(args[13]));
+    if (mem.eql(u8, args[1], "disk")) return disk(out, stage, p, args[13]);
+    if (mem.eql(u8, args[1], "iso") and args.len == 15) return iso(out, stage, p, absolute(args[13]), absolute(args[14]));
     fatal("unknown medium {s}", .{args[1]});
 }

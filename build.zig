@@ -204,11 +204,15 @@ pub fn build(b: *Build) void {
             .optimize = .ReleaseSafe,
         }),
     });
-    const image: Build.LazyPath = medium(b, image_exe, "disk", "renux.img", w, k, l, machine, config, .{ .string = w.mkimg }, null);
+    // The Zig the system carries as its compiler (build.zig.zon).  When it is
+    // not fetched yet, lazyDependency is null, and the build configures again
+    // once Zig has fetched it: the path of this first pass is never used.
+    const zig_dir: Build.LazyPath = if (b.lazyDependency(config.zig, .{})) |dep| dep.path(".") else b.path("tools");
+    const image: Build.LazyPath = medium(b, image_exe, "disk", "renux.img", w, k, l, machine, config, zig_dir, .{ .string = w.mkimg }, null);
     const install_image: *Build.Step.InstallFile = b.addInstallFile(image, b.fmt("renux-{s}-{s}.img", .{ renux_version, machine.name() }));
     const image_step: *Build.Step = b.step("image", "Make a bootable disk in zig-out/renux-<version>-<machine>.img");
     image_step.dependOn(&install_image.step);
-    const iso: Build.LazyPath = medium(b, image_exe, "iso", "renux.iso", w, k, l, machine, config, .{ .file = b.path("release/rc.local") }, b.path("tools/renux/installer"));
+    const iso: Build.LazyPath = medium(b, image_exe, "iso", "renux.iso", w, k, l, machine, config, zig_dir, .{ .file = b.path("release/rc.local") }, b.path("tools/renux/installer"));
     const install_iso: *Build.Step.InstallFile = b.addInstallFile(iso, b.fmt("renux-{s}-{s}-installer.iso", .{ renux_version, machine.name() }));
     const iso_step: *Build.Step = b.step("iso", "Make the installer ISO in zig-out/renux-<version>-<machine>-installer.iso");
     iso_step.dependOn(&install_iso.step);
@@ -259,6 +263,8 @@ fn medium(
     l: stand.Loader,
     machine: Machine,
     config: machine_mod.Config,
+    /// The Zig the new system carries.
+    zig: Build.LazyPath,
     last: LastArg,
     /// The ISO's: the Renux installer's welcome, languages and notes.
     installer: ?Build.LazyPath,
@@ -274,6 +280,7 @@ fn medium(
     run.addFileArg(b.path("stand/defaults/loader.conf"));
     run.addFileArg(b.path(b.fmt("sys/{s}/conf/GENERIC.hints", .{machine.name()})));
     run.addArg(config.efi_boot);
+    run.addDirectoryArg(zig);
     switch (last) {
         .string => |str| run.addArg(str),
         .file => |file| run.addFileArg(file),

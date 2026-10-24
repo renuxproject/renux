@@ -56,8 +56,10 @@ made by the `snapshot` workflow on GitHub.
 ### Requirements
 
 Zig, and nothing else.  Each series of Renux is built by one series of Zig,
-and will carry it as its compiler; `zig build` refuses a Zig of another
-series.
+and carries it as its compiler; `zig build` refuses a Zig of another
+series.  The system's Zig (`/usr/bin/zig`, with `cc`, `c++`, `ld`, `ar`
+and `ranlib`, which run it) is ziglang.org's build for the machine, a
+lazy dependency of `build.zig.zon`, which only the media need.
 
 | Renux | Codename | Zig |
 | ----- | -------- | --- |

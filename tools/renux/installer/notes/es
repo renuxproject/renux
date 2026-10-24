@@ -14,6 +14,8 @@ Qué incluye
     compilan con `zig build` desde el código fuente de Renux, con
     Zig 0.17 como compilador.
   - Renux se basa en FreeBSD 15.1 y sigue su desarrollo.
+  - Zig es el compilador del sistema: zig, cc y c++ compilan Zig, C y
+    C++ desde el primer arranque.
   - El instalador está en inglés, español y portugués, y trae estas
     notas de la versión.  Configura la red y puede instalar el gestor
     de paquetes (pkg) por Internet, para que "pkg install" funcione
@@ -35,8 +37,9 @@ Limitaciones conocidas
   - Algunos pasos del instalador siguen en inglés: el editor de
     particiones, la extracción del sistema, la zona horaria y la
     creación de cuentas.
-  - El sistema instalado aún no tiene compilador: Zig será su
-    compilador.
+  - El compilador del sistema, Zig 0.17 (con cc, c++, ld, ar y ranlib,
+    que lo ejecutan), es la versión de ziglang.org para FreeBSD; aún no
+    se compila desde el código fuente de Renux.
 
 
 Más información

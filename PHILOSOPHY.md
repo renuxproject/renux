@@ -60,6 +60,9 @@ Zig is Renux's system compiler, in the base system.  A running Renux
 builds Renux with the Zig it ships, so the system can maintain itself.
 
 - `cc`, `c++` and `ld` are `zig cc`, `zig c++` and `zig ld.lld`.
+- For now the Zig the system carries is ziglang.org's build for the
+  machine, fetched and checked by Zig's package manager (build.zig.zon);
+  building it from the tree comes later, with the LLVM it needs.
 - Each series of Renux is built by one series of Zig, and `zig build`
   refuses another:
 

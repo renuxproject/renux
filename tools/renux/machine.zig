@@ -42,6 +42,7 @@ pub const Machine: type = enum {
                     "-fno-asynchronous-unwind-tables",
                 .kernel_cflags_late = "-mno-aes -mno-avx",
                 .efi_boot = "BOOTX64.EFI",
+                .zig = "zig_x86_64_freebsd",
                 .qemu = "qemu-system-x86_64",
                 .qemu_args = &.{ "-machine", "q35", "-cpu", "max" },
                 // Where hosts keep QEMU's UEFI firmware (EDK II's OVMF).
@@ -78,6 +79,9 @@ pub const Config: type = struct {
     kernel_cflags_late: []const u8,
     /// The loader's name on the EFI system partition, EFI/BOOT/<name>.
     efi_boot: []const u8,
+    /// The Zig the system carries as its compiler: a dependency of
+    /// build.zig.zon, ziglang.org's build for the machine.
+    zig: []const u8,
     /// QEMU for the machine, and its arguments for a machine to run Renux.
     qemu: []const u8,
     qemu_args: []const []const u8,
