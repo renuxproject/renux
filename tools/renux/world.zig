@@ -98,6 +98,8 @@ fn make(b: *Build, opts: Options, tools: LazyPath, obj: []const u8, targets: []c
     run.addArgs(targets);
     run.addArgs(&.{ b.fmt("TARGET={s}", .{opts.machine.name()}), b.fmt("TARGET_ARCH={s}", .{opts.machine.name()}) });
     run.addArgs(&make_options);
+    // The name the installer (bsdinstall) gives the system.
+    run.addArg("OSNAME=Renux");
     // bmake knows what is up to date; the Zig build always asks it.
     run.has_side_effects = true;
     return run;

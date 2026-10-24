@@ -7,11 +7,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #
-# A snapshot of Renux: `zig build image` makes the whole system (the world,
-# the kernel and the loader) into a bootable disk, as on any host, with
-# the Zig the build is written for.  The disk, compressed, and its sha256
-# are kept as the run's artifact; with `publish`, they also become a
-# pre-release.
+# A snapshot of Renux: `zig build image iso` makes the whole system (the
+# world, the kernel and the loader) into a bootable disk and an installer
+# ISO, as on any host, with the Zig the build is written for.  They are
+# kept, compressed, with their sha256 as the run's artifact; with
+# `publish`, they also become a pre-release.
 
 name: snapshot
 
@@ -63,14 +63,16 @@ jobs:
       # - the C library and the Linux headers the host tools compile with;
       # - the libraries they link against and that are not built from the
       #   tree yet: libarchive (ar), OpenSSL (certctl), zlib (the CTF tools,
-      #   elfcopy, mandoc, nm...).
+      #   elfcopy, mandoc, nm...);
+      # - bsdtar, which makes the installer's distribution sets.
       - name: Host dependencies
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
             bash coreutils findutils diffutils sed grep gzip bzip2 xz-utils patch debianutils \
             libc6-dev linux-libc-dev \
-            libarchive-dev libssl-dev zlib1g-dev
+            libarchive-dev libssl-dev zlib1g-dev \
+            libarchive-tools
 
       # The world's objects take several GB: make room on the runner.
       - name: Free disk space
@@ -83,8 +85,8 @@ jobs:
         run: |
           echo "name=renux-0.1-CURRENT-${MACHINE}-$(date -u +%Y%m%d)-$(git rev-parse --short=10 HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: zig build image
-        run: zig build image -Dmachine="$MACHINE" --summary failures
+      - name: zig build image iso
+        run: zig build image iso -Dmachine="$MACHINE" --summary failures
 
       - name: Compress
         env:
@@ -93,8 +95,9 @@ jobs:
           set -eu
           mkdir snapshot
           xz -T0 -6 -c "zig-out/renux-0.1-CURRENT-${MACHINE}.img" > "snapshot/${NAME}.img.xz"
+          xz -T0 -6 -c "zig-out/renux-0.1-CURRENT-${MACHINE}-installer.iso" > "snapshot/${NAME}-installer.iso.xz"
           cd snapshot
-          sha256sum "${NAME}.img.xz" > SHA256
+          sha256sum "${NAME}.img.xz" "${NAME}-installer.iso.xz" > SHA256
           cat SHA256 | tee -a "$GITHUB_STEP_SUMMARY"
           ls -l
 
@@ -126,4 +129,4 @@ jobs:
           gh release create "snapshot-${NAME#renux-}" snapshot/* \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
             --title "Renux ${NAME#renux-}" \
-            --notes "A snapshot of Renux 0.1-CURRENT, built by \`zig build image\` from ${GITHUB_SHA}. Experimental. Write the disk to a USB stick or run it in QEMU with UEFI firmware."
+            --notes "A snapshot of Renux 0.1-CURRENT, built by \`zig build image\` from ${GITHUB_SHA}. Experimental, UEFI only. The installer ISO boots into the Renux installer, which sets up the disk and the network and installs the system (choose UFS: ZFS is not built yet). The disk image is a ready system."

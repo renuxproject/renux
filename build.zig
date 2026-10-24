@@ -30,6 +30,8 @@
 //                          compiler, installed without root in the cache
 //   zig build image        a bootable disk: the world, the kernel and the
 //                          loader, in zig-out/renux-<version>-<machine>.img
+//   zig build iso          the installer ISO (bsdinstall), in
+//                          zig-out/renux-<version>-<machine>-installer.iso
 //   zig build run          the disk in QEMU, with UEFI firmware (QEMU is
 //                          the one program besides Zig the build may use,
 //                          and only for this step)
@@ -184,7 +186,7 @@ pub fn build(b: *Build) void {
     const world_step: *Build.Step = b.step("world", "Build the userland and install it, without root, in the build's cache");
     world_step.dependOn(w.install);
 
-    // A bootable disk: the world, the kernel and the loader.
+    // The media: a bootable disk, and an installer ISO.
     const config: machine_mod.Config = machine.config().?;
     const image_exe: *Build.Step.Compile = b.addExecutable(.{
         .name = "image",
@@ -194,24 +196,14 @@ pub fn build(b: *Build) void {
             .optimize = .ReleaseSafe,
         }),
     });
-    const image_run: *Build.Step.Run = b.addRunArtifact(image_exe);
-    const image: Build.LazyPath = image_run.addOutputFileArg("renux.img");
-    _ = image_run.addOutputDirectoryArg("stage");
-    image_run.addArgs(&.{ w.makefs, w.mkimg, w.destdir });
-    image_run.addFileArg(k.kernel);
-    image_run.addFileArg(l.efi);
-    image_run.addDirectoryArg(b.path("stand/lua"));
-    image_run.addFileArg(b.path("stand/defaults/loader.conf"));
-    image_run.addFileArg(b.path(b.fmt("sys/{s}/conf/GENERIC.hints", .{machine.name()})));
-    image_run.addArg(config.efi_boot);
-    // The world is outside the Zig build's view: make the disk again
-    // whenever it is asked for.
-    image_run.has_side_effects = true;
-    image_run.step.dependOn(w.install);
-    const image_name: []const u8 = b.fmt("renux-{s}-{s}.img", .{ renux_version, machine.name() });
-    const install_image: *Build.Step.InstallFile = b.addInstallFile(image, image_name);
+    const image: Build.LazyPath = medium(b, image_exe, "disk", "renux.img", w, k, l, machine, config, .{ .string = w.mkimg });
+    const install_image: *Build.Step.InstallFile = b.addInstallFile(image, b.fmt("renux-{s}-{s}.img", .{ renux_version, machine.name() }));
     const image_step: *Build.Step = b.step("image", "Make a bootable disk in zig-out/renux-<version>-<machine>.img");
     image_step.dependOn(&install_image.step);
+    const iso: Build.LazyPath = medium(b, image_exe, "iso", "renux.iso", w, k, l, machine, config, .{ .file = b.path("release/rc.local") });
+    const install_iso: *Build.Step.InstallFile = b.addInstallFile(iso, b.fmt("renux-{s}-{s}-installer.iso", .{ renux_version, machine.name() }));
+    const iso_step: *Build.Step = b.step("iso", "Make the installer ISO in zig-out/renux-<version>-<machine>-installer.iso");
+    iso_step.dependOn(&install_iso.step);
 
     // The disk in QEMU.  -snapshot: what Renux writes is thrown away, and
     // the firmware's variables too.
@@ -235,6 +227,50 @@ pub fn build(b: *Build) void {
     // `zig build`: the kernel and the loader.
     b.getInstallStep().dependOn(kernel_step);
     b.getInstallStep().dependOn(loader_step);
+}
+
+/// The last argument of a medium: a path outside the build (mkimg), or a
+/// file of the tree (the ISO's rc.local).
+const LastArg: type = union(enum) {
+    string: []const u8,
+    file: Build.LazyPath,
+};
+
+/// A medium of image.zig (disk or iso), made from the world, the kernel and
+/// the loader; last is the medium's last argument (mkimg, or the ISO's
+/// rc.local).
+fn medium(
+    b: *Build,
+    image_exe: *Build.Step.Compile,
+    kind: []const u8,
+    name: []const u8,
+    w: world.World,
+    k: kernel.Kernel,
+    l: stand.Loader,
+    machine: Machine,
+    config: machine_mod.Config,
+    last: LastArg,
+) Build.LazyPath {
+    const run: *Build.Step.Run = b.addRunArtifact(image_exe);
+    run.addArg(kind);
+    const out: Build.LazyPath = run.addOutputFileArg(name);
+    _ = run.addOutputDirectoryArg("stage");
+    run.addArgs(&.{ w.makefs, w.destdir });
+    run.addFileArg(k.kernel);
+    run.addFileArg(l.efi);
+    run.addDirectoryArg(b.path("stand/lua"));
+    run.addFileArg(b.path("stand/defaults/loader.conf"));
+    run.addFileArg(b.path(b.fmt("sys/{s}/conf/GENERIC.hints", .{machine.name()})));
+    run.addArg(config.efi_boot);
+    switch (last) {
+        .string => |str| run.addArg(str),
+        .file => |file| run.addFileArg(file),
+    }
+    // The world is outside the Zig build's view: make the medium again
+    // whenever it is asked for.
+    run.has_side_effects = true;
+    run.step.dependOn(w.install);
+    return out;
 }
 
 /// QEMU's UEFI firmware for the machine, where the host has it.
