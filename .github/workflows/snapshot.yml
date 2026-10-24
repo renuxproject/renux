@@ -128,5 +128,5 @@ jobs:
           set -eu
           gh release create "snapshot-${NAME#renux-}" snapshot/* \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title "Renux ${NAME#renux-}" \
-            --notes "A snapshot of Renux 0.1-CURRENT, built by \`zig build image\` from ${GITHUB_SHA}. Experimental, UEFI only. The installer ISO boots into the Renux installer, which sets up the disk and the network and installs the system (choose UFS: ZFS is not built yet). The disk image is a ready system."
+            --title "Renux ${NAME#renux-} \"Aurora\"" \
+            --notes "A snapshot of Renux 0.1-CURRENT \"Aurora\", built by \`zig build image\` from ${GITHUB_SHA}. Experimental, UEFI only. The installer ISO boots into the Renux installer, which sets up the disk and the network and installs the system (choose UFS: ZFS is not built yet). The disk image is a ready system."

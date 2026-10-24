@@ -68,6 +68,8 @@ const Machine: type = machine_mod.Machine;
 /// 0.18.  A Zig of another series stops the build here, rather than in
 /// the middle of it.
 const renux_version: []const u8 = "0.1-CURRENT";
+/// Each series of Renux has a codename too, in alphabetical order.
+const renux_codename: []const u8 = "Aurora";
 const zig_series: SemanticVersion = .{
     .major = 0,
     .minor = 17,
@@ -78,8 +80,8 @@ comptime {
     const v: SemanticVersion = builtin.zig_version;
     if (v.major != zig_series.major or v.minor != zig_series.minor)
         @compileError(fmt.comptimePrint(
-            "Renux {s} is built by Zig {d}.{d}.x, and this is Zig {s}",
-            .{ renux_version, zig_series.major, zig_series.minor, builtin.zig_version_string },
+            "Renux {s} \"{s}\" is built by Zig {d}.{d}.x, and this is Zig {s}",
+            .{ renux_version, renux_codename, zig_series.major, zig_series.minor, builtin.zig_version_string },
         ));
 }
 
