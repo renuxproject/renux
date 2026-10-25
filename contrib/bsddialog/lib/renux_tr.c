@@ -117,29 +117,29 @@ static bool
 match(const char *pattern, const char *text, const char **args, size_t *lens,
     int *nargs)
 {
-	const char *p, *t, *next, *found;
+	const char *p, *cur, *next, *found;
 	size_t litlen;
 
 	*nargs = 0;
 	p = pattern;
-	t = text;
+	cur = text;
 	/* The literal before the first %s. */
 	next = strstr(p, "%s");
 	litlen = next - p;
-	if (strncmp(t, p, litlen) != 0)
+	if (strncmp(cur, p, litlen) != 0)
 		return (false);
-	t += litlen;
+	cur += litlen;
 	p = next + 2;
 	while (*nargs < RENUX_TR_MAXARGS) {
 		next = strstr(p, "%s");
 		litlen = next != NULL ? (size_t)(next - p) : strlen(p);
 		if (next == NULL) {
 			/* The last literal ends the text. */
-			if (strlen(t) < litlen ||
-			    strcmp(t + strlen(t) - litlen, p) != 0)
+			if (strlen(cur) < litlen ||
+			    strcmp(cur + strlen(cur) - litlen, p) != 0)
 				return (false);
-			args[*nargs] = t;
-			lens[*nargs] = strlen(t) - litlen;
+			args[*nargs] = cur;
+			lens[*nargs] = strlen(cur) - litlen;
 			(*nargs)++;
 			return (true);
 		}
@@ -150,13 +150,13 @@ match(const char *pattern, const char *text, const char **args, size_t *lens,
 
 			memcpy(lit, p, litlen);
 			lit[litlen] = '\0';
-			if ((found = strstr(t, lit)) == NULL)
+			if ((found = strstr(cur, lit)) == NULL)
 				return (false);
 		}
-		args[*nargs] = t;
-		lens[*nargs] = found - t;
+		args[*nargs] = cur;
+		lens[*nargs] = found - cur;
 		(*nargs)++;
-		t = found + litlen;
+		cur = found + litlen;
 		p = next + 2;
 	}
 	return (false);
