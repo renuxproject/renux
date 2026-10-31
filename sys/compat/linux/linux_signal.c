@@ -128,6 +128,11 @@ linux_to_bsd_sigaction(l_sigaction_t *lsa, struct sigaction *bsa)
 		flags &= ~LINUX_SA_NOMASK;
 		bsa->sa_flags |= SA_NODEFER;
 	}
+	/*
+	 * SA_UNSUPPORTED (0x400) is a probe bit and SA_EXPOSE_TAGBITS (0x800)
+	 * only means something on arm64; Linux on x86 ignores both silently.
+	 */
+	flags &= ~(0x400 | 0x800);
 
 	if (flags != 0)
 		linux_msg(curthread, "unsupported sigaction flag %#lx", flags);

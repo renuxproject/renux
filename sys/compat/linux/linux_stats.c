@@ -708,7 +708,11 @@ linux_statx(struct thread *td, struct linux_statx_args *args)
 	int error, dirfd, flags;
 	struct stat buf;
 
-	if (!linux_to_bsd_stat_flags(args->flags, &flags)) {
+	/* Same check as Linux: both sync hints together are invalid. */
+	if ((args->flags & LINUX_AT_STATX_SYNC_TYPE) == LINUX_AT_STATX_SYNC_TYPE)
+		return (EINVAL);
+	if (!linux_to_bsd_stat_flags(args->flags & ~LINUX_AT_STATX_SYNC_TYPE,
+	    &flags)) {
 		linux_msg(td, "statx unsupported flags 0x%x", flags);
 		return (EINVAL);
 	}

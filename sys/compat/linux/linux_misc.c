@@ -1814,6 +1814,14 @@ linux_prctl(struct thread *td, struct linux_prctl_args *args)
 		linux_msg(td, "unsupported prctl PR_SET_PTRACER");
 		error = EINVAL;
 		break;
+	case LINUX_PR_SET_VMA:
+		/*
+		 * Naming anonymous mappings is a debugging aid; Linux built
+		 * without CONFIG_ANON_VMA_NAME fails it the same way.  Callers
+		 * (glibc, Chromium, Bun) issue it constantly, so stay quiet.
+		 */
+		error = EINVAL;
+		break;
 	default:
 		linux_msg(td, "unsupported prctl option %d", args->option);
 		error = EINVAL;

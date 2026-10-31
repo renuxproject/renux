@@ -60,6 +60,7 @@
 #define LINUX_PR_SET_CHILD_SUBREAPER 36
 #define	LINUX_PR_SET_NO_NEW_PRIVS	38
 #define	LINUX_PR_SET_PTRACER	1499557217
+#define	LINUX_PR_SET_VMA	0x53564d41
 
 #define	LINUX_MAX_COMM_LEN	16	/* Maximum length of the process name. */
 

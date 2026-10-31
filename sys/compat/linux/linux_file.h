@@ -42,6 +42,13 @@
 		 * have such facility (automount), we can simply ignore this flag.
 		 */
 #define	LINUX_AT_EMPTY_PATH		0x1000
+#define	LINUX_AT_STATX_FORCE_SYNC	0x2000
+#define	LINUX_AT_STATX_DONT_SYNC	0x4000
+#define	LINUX_AT_STATX_SYNC_TYPE	0x6000
+		/*
+		 * statx(2) synchronization hints, meaningful only for network
+		 * filesystems.  Linux ignores them for local filesystems.
+		 */
 
 /*
  * posix_fadvise advice

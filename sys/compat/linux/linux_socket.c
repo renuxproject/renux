@@ -51,6 +51,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <netinet/tcp_fsm.h>
 #ifdef INET6
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
@@ -589,8 +590,7 @@ linux_to_bsd_tcp_sockopt(int opt)
 	case LINUX_TCP_KEEPCNT:
 		return (TCP_KEEPCNT);
 	case LINUX_TCP_INFO:
-		LINUX_RATELIMIT_MSG_OPT1(
-		    "unsupported TCP socket option TCP_INFO (%d)", opt);
+		/* getsockopt() handles it in linux_getsockopt_tcp_info(). */
 		return (-2);
 	case LINUX_TCP_MD5SIG:
 		return (TCP_MD5SIG);
@@ -2248,6 +2248,85 @@ linux_getsockopt_so_linger(struct thread *td,
 	return (linux_sockopt_copyout(td, &ling, len, args));
 }
 
+CTASSERT(sizeof(struct l_tcp_info) == 104);
+
+static uint8_t
+bsd_to_linux_tcp_state(uint8_t state)
+{
+
+	switch (state) {
+	case TCPS_LISTEN:
+		return (LINUX_TCP_LISTEN);
+	case TCPS_SYN_SENT:
+		return (LINUX_TCP_SYN_SENT);
+	case TCPS_SYN_RECEIVED:
+		return (LINUX_TCP_SYN_RECV);
+	case TCPS_ESTABLISHED:
+		return (LINUX_TCP_ESTABLISHED);
+	case TCPS_CLOSE_WAIT:
+		return (LINUX_TCP_CLOSE_WAIT);
+	case TCPS_FIN_WAIT_1:
+		return (LINUX_TCP_FIN_WAIT1);
+	case TCPS_CLOSING:
+		return (LINUX_TCP_CLOSING);
+	case TCPS_LAST_ACK:
+		return (LINUX_TCP_LAST_ACK);
+	case TCPS_FIN_WAIT_2:
+		return (LINUX_TCP_FIN_WAIT2);
+	case TCPS_TIME_WAIT:
+		return (LINUX_TCP_TIME_WAIT);
+	default:
+		return (LINUX_TCP_CLOSE);
+	}
+}
+
+/*
+ * FreeBSD's struct tcp_info starts with the Linux layout, so the shared
+ * fields copy straight across; only the state numbering and the option
+ * bits differ.  Chromium reads tcpi_rtt from here to estimate network
+ * quality.
+ */
+static int
+linux_getsockopt_tcp_info(struct thread *td,
+    struct linux_getsockopt_args *args)
+{
+	struct tcp_info bti;
+	struct l_tcp_info lti;
+	socklen_t len, ulen;
+	int error;
+
+	error = copyin(PTRIN(args->optlen), &ulen, sizeof(ulen));
+	if (error != 0)
+		return (error);
+	if ((int)ulen < 0)
+		return (EINVAL);
+
+	len = sizeof(bti);
+	error = kern_getsockopt(td, args->s, IPPROTO_TCP, TCP_INFO, &bti,
+	    UIO_SYSSPACE, &len);
+	if (error != 0)
+		return (error);
+
+	bzero(&lti, sizeof(lti));
+	lti.tcpi_state = bsd_to_linux_tcp_state(bti.tcpi_state);
+	lti.tcpi_options = bti.tcpi_options & (TCPI_OPT_TIMESTAMPS |
+	    TCPI_OPT_SACK | TCPI_OPT_WSCALE | TCPI_OPT_ECN);
+	lti.tcpi_wscale = bti.tcpi_snd_wscale | (bti.tcpi_rcv_wscale << 4);
+	lti.tcpi_rto = bti.tcpi_rto;
+	lti.tcpi_snd_mss = bti.tcpi_snd_mss;
+	lti.tcpi_rcv_mss = bti.tcpi_rcv_mss;
+	lti.tcpi_last_data_recv = bti.tcpi_last_data_recv;
+	lti.tcpi_rtt = bti.tcpi_rtt;
+	lti.tcpi_rttvar = bti.tcpi_rttvar;
+	lti.tcpi_snd_ssthresh = bti.tcpi_snd_ssthresh;
+	lti.tcpi_snd_cwnd = bti.tcpi_snd_cwnd;
+	lti.tcpi_rcv_space = bti.tcpi_rcv_space;
+	lti.tcpi_total_retrans = bti.tcpi_snd_rexmitpack;
+
+	return (linux_sockopt_copyout(td, &lti, MIN(ulen, sizeof(lti)),
+	    args));
+}
+
 int
 linux_getsockopt(struct thread *td, struct linux_getsockopt_args *args)
 {
@@ -2344,6 +2423,8 @@ linux_getsockopt(struct thread *td, struct linux_getsockopt_args *args)
 		name = linux_to_bsd_ip6_sockopt(args->optname);
 		break;
 	case IPPROTO_TCP:
+		if (args->optname == LINUX_TCP_INFO)
+			return (linux_getsockopt_tcp_info(td, args));
 		name = linux_to_bsd_tcp_sockopt(args->optname);
 		break;
 	default:

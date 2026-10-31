@@ -323,6 +323,59 @@ int linux_accept(struct thread *td, struct linux_accept_args *args);
 #define	LINUX_TCP_INFO		11
 #define	LINUX_TCP_MD5SIG	14
 
+/* Linux TCP states, as reported in tcpi_state */
+#define	LINUX_TCP_ESTABLISHED	1
+#define	LINUX_TCP_SYN_SENT	2
+#define	LINUX_TCP_SYN_RECV	3
+#define	LINUX_TCP_FIN_WAIT1	4
+#define	LINUX_TCP_FIN_WAIT2	5
+#define	LINUX_TCP_TIME_WAIT	6
+#define	LINUX_TCP_CLOSE		7
+#define	LINUX_TCP_CLOSE_WAIT	8
+#define	LINUX_TCP_LAST_ACK	9
+#define	LINUX_TCP_LISTEN	10
+#define	LINUX_TCP_CLOSING	11
+
+/*
+ * The classic 104-byte Linux struct tcp_info.  Newer kernels append more
+ * fields; Linux copies out min(optlen, sizeof) and callers check the
+ * returned length, so this prefix is a valid answer.
+ */
+struct l_tcp_info {
+	uint8_t		tcpi_state;
+	uint8_t		tcpi_ca_state;
+	uint8_t		tcpi_retransmits;
+	uint8_t		tcpi_probes;
+	uint8_t		tcpi_backoff;
+	uint8_t		tcpi_options;
+	uint8_t		tcpi_wscale;	/* snd_wscale:4, rcv_wscale:4 */
+	uint8_t		tcpi_flags;
+	uint32_t	tcpi_rto;
+	uint32_t	tcpi_ato;
+	uint32_t	tcpi_snd_mss;
+	uint32_t	tcpi_rcv_mss;
+	uint32_t	tcpi_unacked;
+	uint32_t	tcpi_sacked;
+	uint32_t	tcpi_lost;
+	uint32_t	tcpi_retrans;
+	uint32_t	tcpi_fackets;
+	uint32_t	tcpi_last_data_sent;
+	uint32_t	tcpi_last_ack_sent;
+	uint32_t	tcpi_last_data_recv;
+	uint32_t	tcpi_last_ack_recv;
+	uint32_t	tcpi_pmtu;
+	uint32_t	tcpi_rcv_ssthresh;
+	uint32_t	tcpi_rtt;
+	uint32_t	tcpi_rttvar;
+	uint32_t	tcpi_snd_ssthresh;
+	uint32_t	tcpi_snd_cwnd;
+	uint32_t	tcpi_advmss;
+	uint32_t	tcpi_reordering;
+	uint32_t	tcpi_rcv_rtt;
+	uint32_t	tcpi_rcv_space;
+	uint32_t	tcpi_total_retrans;
+};
+
 struct l_ifmap {
 	l_ulong		mem_start;
 	l_ulong		mem_end;
