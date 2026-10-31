@@ -160,9 +160,6 @@ linux_proc_init(struct thread *td, struct thread *newtd, bool init_thread)
 			p->p_emuldata = pem;
 		}
 		newtd->td_emuldata = em;
-
-		linux_set_default_openfiles(td, p);
-		linux_set_default_stacksize(td, p);
 	} else {
 		p = td->td_proc;
 
@@ -282,6 +279,14 @@ linux_on_exec(struct proc *p, struct image_params *imgp)
 		 * We are switching the process to Linux emulator.
 		 */
 		linux_proc_init(td, td, false);
+
+		/*
+		 * Apply the Linux default limits only here.  Doing it for
+		 * every fork and new thread would silently undo a limit the
+		 * program raised itself (e.g. RLIMIT_NOFILE cur == max).
+		 */
+		linux_set_default_openfiles(td, p);
+		linux_set_default_stacksize(td, p);
 
 		/*
 		 * Create a transient td_emuldata for all suspended
