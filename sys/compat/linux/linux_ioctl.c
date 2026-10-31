@@ -3545,6 +3545,10 @@ linux_ioctl_evdev(struct thread *td, struct linux_ioctl_args *args)
 	case (EVIOCRMFF & ~IOC_DIRMASK) | IOC_IN:
 		args->cmd = EVIOCRMFF;
 		break;
+	case EVIOCSFF:
+		/* Linux stores the new effect id in the argument */
+		args->cmd = (EVIOCSFF & ~IOC_DIRMASK) | IOC_INOUT;
+		break;
 	case EVIOCSCLOCKID: {
 		error = copyin(PTRIN(args->arg), &clock, sizeof(clock));
 		if (error != 0)
