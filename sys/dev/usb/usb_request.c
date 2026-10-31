@@ -1287,6 +1287,30 @@ usbd_req_get_config_desc(struct usb_device *udev, struct mtx *mtx,
 
 	err = usbd_req_get_desc(udev, mtx, NULL, d, sizeof(*d),
 	    sizeof(*d), 0, UDESC_CONFIG, conf_index, 0);
+	if (err == USB_ERR_SHORT_XFER) {
+		struct usb_device_request req;
+		uint16_t actlen;
+
+		/*
+		 * Some devices, like many Xbox 360 controller clones,
+		 * return a truncated configuration descriptor header.
+		 * Only wTotalLength is needed here, so accept at least
+		 * 4 bytes like Linux does.
+		 */
+		req.bmRequestType = UT_READ_DEVICE;
+		req.bRequest = UR_GET_DESCRIPTOR;
+		USETW2(req.wValue, UDESC_CONFIG, conf_index);
+		USETW(req.wIndex, 0);
+		USETW(req.wLength, sizeof(*d));
+		memset(d, 0, sizeof(*d));
+		err = usbd_do_request_flags(udev, mtx, &req, d,
+		    USB_SHORT_XFER_OK, &actlen, 1000 /* ms */);
+		if (err == 0 && actlen < 4)
+			err = USB_ERR_SHORT_XFER;
+		if (err == 0)
+			DPRINTF("short config descriptor header "
+			    "(%u bytes)\n", actlen);
+	}
 	if (err) {
 		goto done;
 	}
