@@ -38,6 +38,9 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/sysctl.h>
+#include <sys/taskqueue.h>
+
+#include <machine/atomic.h>
 
 #include <dev/evdev/input.h>
 #include <dev/evdev/evdev.h>
@@ -53,6 +56,14 @@
 #include <dev/usb/usbdi.h>
 
 static const uint8_t	xb360gp_rdesc[] = {HID_XB360GP_REPORT_DESCR()};
+
+struct xb360gp_softc {
+	struct hgame_softc	hgame;	/* first: hgame callbacks use it */
+	struct task		rumble_task;
+	u_int			rumble;	/* strong << 8 | weak */
+};
+
+static hidmap_cb_t	xb360gp_final_cb;
 
 #define XB360GP_MAP_BUT(number, code)	\
 	{ HIDMAP_KEY(HUP_BUTTON, number, code) }
@@ -90,7 +101,7 @@ static const struct hidmap_item xb360gp_map[] = {
 	XB360GP_MAP_ABS_FLT(RX,		ABS_RX),
 	XB360GP_MAP_ABS_INV(RY,		ABS_RY),
 	XB360GP_MAP_ABS(RZ,		ABS_RZ),
-	XB360GP_FINALCB(		hgame_final_cb),
+	XB360GP_FINALCB(		xb360gp_final_cb),
 };
 
 static const STRUCT_USB_HOST_ID xb360gp_devs[] = {
@@ -132,32 +143,79 @@ xb360gp_probe(device_t dev)
 	return (BUS_PROBE_DEFAULT);
 }
 
+/* Called by evdev with its lock held, so the USB write is deferred. */
+static void
+xb360gp_ff_rumble(struct evdev_dev *evdev, uint16_t strong, uint16_t weak)
+{
+	struct xb360gp_softc *sc = device_get_softc(evdev_get_softc(evdev));
+
+	atomic_store_int(&sc->rumble, (strong >> 8) << 8 | weak >> 8);
+	taskqueue_enqueue(taskqueue_thread, &sc->rumble_task);
+}
+
+static void
+xb360gp_rumble_task(void *context, int pending __unused)
+{
+	struct xb360gp_softc *sc = context;
+	u_int rumble = atomic_load_int(&sc->rumble);
+	/* Same packet as Linux xpad sends to XTYPE_XBOX360 pads */
+	uint8_t buf[8] = { 0x00, 0x08, 0x00, rumble >> 8, rumble & 0xff };
+
+	(void)hid_write(sc->hgame.hm.dev, buf, sizeof(buf));
+}
+
+static int
+xb360gp_final_cb(HIDMAP_CB_ARGS)
+{
+	struct evdev_dev *evdev = HIDMAP_CB_GET_EVDEV();
+
+	if (HIDMAP_CB_GET_STATE() == HIDMAP_CB_IS_ATTACHING)
+		evdev_support_ff_rumble(evdev, xb360gp_ff_rumble);
+
+	return (hgame_final_cb(hm, hi, ctx));
+}
+
 static int
 xb360gp_attach(device_t dev)
 {
-	struct hgame_softc *sc = device_get_softc(dev);
+	struct xb360gp_softc *sc = device_get_softc(dev);
+	uint8_t reportbuf[3];
 	int error;
 
 	/*
-	 * Turn off the four LEDs on the gamepad which
-	 * are blinking by default:
+	 * The four LEDs on the gamepad blink until the host assigns a
+	 * player number.  Like Linux xpad, flash and then light the LED
+	 * for player 1-4 (commands 0x02-0x05), taken from the unit number.
 	 */
-	static const uint8_t reportbuf[3] = {1, 3, 0};
-	error = hid_set_report(dev, reportbuf, sizeof(reportbuf),
-	    HID_OUTPUT_REPORT, 0);
+	reportbuf[0] = 1;
+	reportbuf[1] = 3;
+	reportbuf[2] = 0x02 + device_get_unit(dev) % 4;
+	/* Linux xpad uses the interrupt OUT pipe, some clones need it */
+	error = hid_write(dev, reportbuf, sizeof(reportbuf));
+	if (error)
+		error = hid_set_report(dev, reportbuf, sizeof(reportbuf),
+		    HID_OUTPUT_REPORT, 0);
 	if (error)
 		device_printf(dev, "set output report failed, error=%d "
 		    "(ignored)\n", error);
 
-	return (hidmap_attach(&sc->hm));
+	TASK_INIT(&sc->rumble_task, 0, xb360gp_rumble_task, sc);
+
+	return (hidmap_attach(&sc->hgame.hm));
 }
 
 static int
 xb360gp_detach(device_t dev)
 {
-	struct hgame_softc *sc = device_get_softc(dev);
+	struct xb360gp_softc *sc = device_get_softc(dev);
+	int error;
 
-	return (hidmap_detach(&sc->hm));
+	/* evdev is gone after this, so no new rumble requests */
+	error = hidmap_detach(&sc->hgame.hm);
+	if (error == 0)
+		taskqueue_drain(taskqueue_thread, &sc->rumble_task);
+
+	return (error);
 }
 
 static device_method_t xb360gp_methods[] = {
@@ -169,7 +227,7 @@ static device_method_t xb360gp_methods[] = {
 };
 
 DEFINE_CLASS_0(xb360gp, xb360gp_driver, xb360gp_methods,
-    sizeof(struct hgame_softc));
+    sizeof(struct xb360gp_softc));
 DRIVER_MODULE(xb360gp, hidbus, xb360gp_driver, NULL, NULL);
 MODULE_DEPEND(xb360gp, hid, 1, 1, 1);
 MODULE_DEPEND(xb360gp, hidbus, 1, 1, 1);
