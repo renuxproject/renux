@@ -194,7 +194,6 @@ static int
 linux_futex(struct thread *td, struct linux_futex_args *args)
 {
 	struct linux_pemuldata *pem;
-	struct proc *p;
 
 	if (args->op & LINUX_FUTEX_PRIVATE_FLAG) {
 		args->flags = 0;
@@ -236,24 +235,10 @@ linux_futex(struct thread *td, struct linux_futex_args *args)
 		/*
 		 * Glibc does not use this operation since version 2.3.3,
 		 * as it is racy and replaced by FUTEX_CMP_REQUEUE operation.
-		 * Glibc versions prior to 2.3.3 fall back to FUTEX_WAKE when
-		 * FUTEX_REQUEUE returned EINVAL.
+		 * Other users (musl, and static binaries that issue raw
+		 * syscalls such as the Zig compiler) rely on it and have no
+		 * fallback, so support it for every brand, as Linux does.
 		 */
-		pem = pem_find(td->td_proc);
-		if ((pem->flags & LINUX_XDEPR_REQUEUEOP) == 0) {
-			linux_msg(td, "unsupported FUTEX_REQUEUE");
-			pem->flags |= LINUX_XDEPR_REQUEUEOP;
-		}
-
-		/*
-		 * The above is true, however musl libc does make use of the
-		 * futex requeue operation, allow operation for brands which
-		 * set LINUX_BI_FUTEX_REQUEUE bit of Brandinfo flags.
-		 */
-		p = td->td_proc;
-		const Elf_Brandinfo *bi = p->p_elf_brandinfo;
-		if (bi == NULL || ((bi->flags & LINUX_BI_FUTEX_REQUEUE)) == 0)
-			return (EINVAL);
 		args->val3_compare = false;
 		/* FALLTHROUGH */
 
