@@ -345,6 +345,14 @@ rtnl_if_flags_to_linux(unsigned int if_flags)
 			break;
 		case IFF_MULTICAST:
 			result |= 1 << 12;
+			break;
+		case IFF_LOWER_UP:
+			/*
+			 * Linux IFF_LOWER_UP.  Chromium treats a link without
+			 * it as down and reports the machine as offline.
+			 */
+			result |= 1 << 16;
+			break;
 		}
 	}
 	return (result);
