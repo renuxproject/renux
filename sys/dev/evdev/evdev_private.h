@@ -105,6 +105,21 @@ enum evdev_lock_type
 	EV_LOCK_EXT_EPOCH,	/* External epoch */
 };
 
+/*
+ * Memoryless force feedback, modeled after Linux ff-memless: effects are
+ * kept here and the driver only gets the resulting motor magnitudes.
+ */
+#define	EVDEV_FF_EFFECTS	16
+
+struct evdev_ff_slot {
+	struct evdev_client *	owner;		/* NULL when the slot is free */
+	struct ff_rumble_effect	rumble;
+	struct ff_replay	replay;
+	sbintime_t		start;
+	sbintime_t		stop;		/* 0 when endless */
+	bool			playing;
+};
+
 struct evdev_dev
 {
 	char			ev_name[NAMELEN];
@@ -168,6 +183,14 @@ struct evdev_dev
 
 	LIST_ENTRY(evdev_dev) ev_link;
 	CK_SLIST_HEAD(, evdev_client) ev_clients;		/* (l) */
+
+	/* Force feedback: */
+	bitstr_t		bit_decl(ev_ff_flags, FF_CNT);
+	evdev_ff_rumble_t *	ev_ff_rumble;
+	struct evdev_ff_slot	ev_ff[EVDEV_FF_EFFECTS];	/* (s) */
+	struct callout		ev_ff_callout;			/* (s) */
+	uint16_t		ev_ff_strong;			/* (s) */
+	uint16_t		ev_ff_weak;			/* (s) */
 };
 
 #define	SYSTEM_CONSOLE_LOCK	&Giant
@@ -276,6 +299,12 @@ int evdev_release_client(struct evdev_dev *, struct evdev_client *);
 void evdev_client_push(struct evdev_client *, uint16_t, uint16_t, int32_t);
 void evdev_notify_event(struct evdev_client *);
 void evdev_revoke_client(struct evdev_client *);
+
+/* Force feedback related functions: */
+int evdev_ff_upload(struct evdev_dev *, struct evdev_client *,
+    struct ff_effect *);
+int evdev_ff_erase(struct evdev_dev *, struct evdev_client *, int);
+void evdev_ff_flush(struct evdev_dev *, struct evdev_client *);
 
 /* Multitouch related functions: */
 void evdev_mt_init(struct evdev_dev *);

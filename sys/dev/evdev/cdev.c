@@ -38,6 +38,8 @@
 #include <sys/poll.h>
 #include <sys/proc.h>
 #include <sys/selinfo.h>
+#include <sys/syscall.h>
+#include <sys/sysent.h>
 #include <sys/systm.h>
 #include <sys/time.h>
 #include <sys/uio.h>
@@ -534,9 +536,34 @@ evdev_ioctl(struct cdev *dev, u_long cmd, caddr_t data, int fflag,
 		return (0);
 
 	case EVIOCSFF:
-	case EVIOCRMFF:
-	case EVIOCGEFFECTS:
+	case (EVIOCSFF & ~IOC_DIRMASK) | IOC_INOUT:
 		/* Fake unsupported ioctls */
+		if (evdev->ev_ff_rumble == NULL)
+			return (0);
+		ret = evdev_ff_upload(evdev, client, (struct ff_effect *)data);
+		/*
+		 * EVIOCSFF is declared write-only, but like on Linux the new
+		 * effect id has to be stored in the caller's structure.  The
+		 * Linuxulator uses an IOC_INOUT variant, which is copied out.
+		 */
+		if (ret == 0 && cmd == EVIOCSFF &&
+		    SV_CURPROC_ABI() == SV_ABI_FREEBSD &&
+		    td->td_sa.code == SYS_ioctl &&
+		    (u_long)td->td_sa.args[1] == EVIOCSFF)
+			ret = copyout(&((struct ff_effect *)data)->id,
+			    (char *)td->td_sa.args[2] +
+			    offsetof(struct ff_effect, id),
+			    sizeof(((struct ff_effect *)data)->id));
+		return (ret);
+
+	case EVIOCRMFF:
+		if (evdev->ev_ff_rumble == NULL)
+			return (0);
+		return (evdev_ff_erase(evdev, client, *(int *)data));
+
+	case EVIOCGEFFECTS:
+		*(int *)data = evdev->ev_ff_rumble != NULL ?
+		    EVDEV_FF_EFFECTS : 0;
 		return (0);
 
 	case EVIOCGRAB:
@@ -710,13 +737,9 @@ evdev_ioctl_eviocgbit(struct evdev_dev *evdev, int type, int len, caddr_t data,
 		limit = SW_CNT;
 		break;
 	case EV_FF:
-		/*
-		 * We don't support EV_FF now, so let's
-		 * just fake it returning only zeros.
-		 */
-		bzero(data, len);
-		td->td_retval[0] = len;
-		return (0);
+		bitmap = evdev->ev_ff_flags;
+		limit = FF_CNT;
+		break;
 	default:
 		return (ENOTTY);
 	}

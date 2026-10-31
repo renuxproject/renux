@@ -91,6 +91,9 @@ SYSCTL_NODE(_kern_evdev, OID_AUTO, input, CTLFLAG_RD | CTLFLAG_MPSAFE, 0,
 static void evdev_start_repeat(struct evdev_dev *, uint16_t);
 static void evdev_stop_repeat(struct evdev_dev *);
 static int evdev_check_event(struct evdev_dev *, uint16_t, uint16_t, int32_t);
+static int evdev_ff_play(struct evdev_dev *, uint16_t, int32_t);
+static void evdev_ff_update(struct evdev_dev *);
+static void evdev_ff_callout(void *);
 
 struct evdev_dev *
 evdev_alloc(void)
@@ -311,6 +314,10 @@ evdev_register_common(struct evdev_dev *evdev)
 		}
 	}
 
+	if (evdev->ev_ff_rumble != NULL)
+		callout_init_mtx(&evdev->ev_ff_callout,
+		    evdev->ev_state_lock, 0);
+
 	/* Initialize multitouch protocol type B states or A to B converter */
 	if (bit_test(evdev->ev_abs_flags, ABS_MT_SLOT) ||
 	    bit_test(evdev->ev_flags, EVDEV_FLAG_MT_TRACK))
@@ -392,6 +399,8 @@ evdev_unregister(struct evdev_dev *evdev)
 	ret = evdev_cdev_destroy(evdev);
 	evdev->ev_cdev = NULL;
 	sx_destroy(&evdev->ev_list_lock);
+	if (evdev->ev_ff_rumble != NULL)
+		callout_drain(&evdev->ev_ff_callout);
 	if (ret == 0 && evdev->ev_lock_type != EV_LOCK_MTX)
 		mtx_destroy(&evdev->ev_mtx);
 
@@ -544,6 +553,15 @@ evdev_support_sw(struct evdev_dev *evdev, uint16_t code)
 
 	KASSERT(code < SW_CNT, ("invalid evdev sw property"));
 	bit_set(evdev->ev_sw_flags, code);
+}
+
+void
+evdev_support_ff_rumble(struct evdev_dev *evdev, evdev_ff_rumble_t *rumble)
+{
+
+	evdev_support_event(evdev, EV_FF);
+	bit_set(evdev->ev_ff_flags, FF_RUMBLE);
+	evdev->ev_ff_rumble = rumble;
 }
 
 bool
@@ -984,6 +1002,14 @@ evdev_inject_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 	struct epoch_tracker et;
 	int ret = 0;
 
+	if (type == EV_FF && evdev->ev_ff_rumble != NULL) {
+		/* Like Linux, errors in playback requests are not reported. */
+		EVDEV_LOCK(evdev);
+		(void)evdev_ff_play(evdev, code, value);
+		EVDEV_UNLOCK(evdev);
+		return (0);
+	}
+
 	switch (type) {
 	case EV_REP:
 		/* evdev repeats should not be processed by hardware driver */
@@ -1075,6 +1101,7 @@ evdev_dispose_client(struct evdev_dev *evdev, struct evdev_client *client)
 	if (evdev->ev_lock_type != EV_LOCK_MTX)
 		EVDEV_LOCK(evdev);
 	evdev_release_client(evdev, client);
+	evdev_ff_flush(evdev, client);
 	if (evdev->ev_lock_type != EV_LOCK_MTX)
 		EVDEV_UNLOCK(evdev);
 }
@@ -1165,6 +1192,183 @@ evdev_stop_repeat(struct evdev_dev *evdev)
 		callout_stop(&evdev->ev_rep_callout);
 		evdev->ev_rep_key = KEY_RESERVED;
 	}
+}
+
+int
+evdev_ff_upload(struct evdev_dev *evdev, struct evdev_client *client,
+    struct ff_effect *effect)
+{
+	struct evdev_ff_slot *ff;
+	int id, ret = 0;
+
+	if (effect->type != FF_RUMBLE)
+		return (EINVAL);
+
+	EVDEV_LOCK(evdev);
+	if (effect->id == -1) {
+		for (id = 0; id < EVDEV_FF_EFFECTS; id++)
+			if (evdev->ev_ff[id].owner == NULL)
+				break;
+		if (id == EVDEV_FF_EFFECTS) {
+			ret = ENOSPC;
+			goto out;
+		}
+		ff = &evdev->ev_ff[id];
+		bzero(ff, sizeof(*ff));
+		ff->owner = client;
+		effect->id = id;
+	} else {
+		id = effect->id;
+		if (id < 0 || id >= EVDEV_FF_EFFECTS ||
+		    evdev->ev_ff[id].owner == NULL) {
+			ret = EINVAL;
+			goto out;
+		}
+		ff = &evdev->ev_ff[id];
+		if (ff->owner != client) {
+			ret = EACCES;
+			goto out;
+		}
+	}
+	ff->rumble = effect->u.rumble;
+	ff->replay = effect->replay;
+	if (ff->playing)
+		evdev_ff_update(evdev);
+out:
+	EVDEV_UNLOCK(evdev);
+	return (ret);
+}
+
+int
+evdev_ff_erase(struct evdev_dev *evdev, struct evdev_client *client, int id)
+{
+	struct evdev_ff_slot *ff;
+	int ret = 0;
+
+	if (id < 0 || id >= EVDEV_FF_EFFECTS)
+		return (EINVAL);
+
+	EVDEV_LOCK(evdev);
+	ff = &evdev->ev_ff[id];
+	if (ff->owner == NULL)
+		ret = EINVAL;
+	else if (ff->owner != client)
+		ret = EACCES;
+	else {
+		ff->owner = NULL;
+		ff->playing = false;
+		evdev_ff_update(evdev);
+	}
+	EVDEV_UNLOCK(evdev);
+	return (ret);
+}
+
+/* Erase all effects uploaded by a client that goes away. */
+void
+evdev_ff_flush(struct evdev_dev *evdev, struct evdev_client *client)
+{
+	bool changed = false;
+	int id;
+
+	EVDEV_LOCK_ASSERT(evdev);
+
+	if (evdev->ev_ff_rumble == NULL)
+		return;
+
+	for (id = 0; id < EVDEV_FF_EFFECTS; id++) {
+		if (evdev->ev_ff[id].owner == client) {
+			evdev->ev_ff[id].owner = NULL;
+			evdev->ev_ff[id].playing = false;
+			changed = true;
+		}
+	}
+	if (changed)
+		evdev_ff_update(evdev);
+}
+
+static int
+evdev_ff_play(struct evdev_dev *evdev, uint16_t code, int32_t value)
+{
+	struct evdev_ff_slot *ff;
+
+	EVDEV_LOCK_ASSERT(evdev);
+
+	if (code >= EVDEV_FF_EFFECTS || value < 0)
+		return (EINVAL);
+	ff = &evdev->ev_ff[code];
+	if (ff->owner == NULL)
+		return (EINVAL);
+
+	if (value > 0) {
+		/* value is the repeat count */
+		ff->start = sbinuptime() + ff->replay.delay * SBT_1MS;
+		ff->stop = ff->replay.length == 0 ? 0 : ff->start +
+		    (sbintime_t)ff->replay.length * MIN(value, 1000) * SBT_1MS;
+		ff->playing = true;
+	} else
+		ff->playing = false;
+	evdev_ff_update(evdev);
+
+	return (0);
+}
+
+/*
+ * Recompute the motor magnitudes from the playing effects, tell the
+ * driver when they change and schedule the next start or stop.
+ */
+static void
+evdev_ff_update(struct evdev_dev *evdev)
+{
+	struct evdev_ff_slot *ff;
+	sbintime_t now, next;
+	u_int strong, weak;
+	int id;
+
+	EVDEV_LOCK_ASSERT(evdev);
+
+	now = sbinuptime();
+	next = 0;
+	strong = weak = 0;
+	for (id = 0; id < EVDEV_FF_EFFECTS; id++) {
+		ff = &evdev->ev_ff[id];
+		if (ff->owner == NULL || !ff->playing)
+			continue;
+		if (ff->stop != 0 && now >= ff->stop) {
+			ff->playing = false;
+			continue;
+		}
+		if (now < ff->start) {
+			if (next == 0 || ff->start < next)
+				next = ff->start;
+			continue;
+		}
+		/* Like Linux ff-memless, simultaneous rumble effects add up. */
+		strong += ff->rumble.strong_magnitude;
+		weak += ff->rumble.weak_magnitude;
+		if (ff->stop != 0 && (next == 0 || ff->stop < next))
+			next = ff->stop;
+	}
+	strong = MIN(strong, 0xffff);
+	weak = MIN(weak, 0xffff);
+
+	if (strong != evdev->ev_ff_strong || weak != evdev->ev_ff_weak) {
+		evdev->ev_ff_strong = strong;
+		evdev->ev_ff_weak = weak;
+		evdev->ev_ff_rumble(evdev, strong, weak);
+	}
+
+	if (next != 0)
+		callout_reset_sbt(&evdev->ev_ff_callout, next, 0,
+		    evdev_ff_callout, evdev, C_ABSOLUTE);
+	else
+		callout_stop(&evdev->ev_ff_callout);
+}
+
+static void
+evdev_ff_callout(void *arg)
+{
+
+	evdev_ff_update((struct evdev_dev *)arg);
 }
 
 MODULE_VERSION(evdev, 1);
