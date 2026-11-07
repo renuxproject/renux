@@ -92,7 +92,16 @@ jobs:
       - name: Host dependencies
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends binutils file
+          sudo apt-get install -y -q --no-install-recommends binutils file llvm
+          if ! command -v llvm-objcopy >/dev/null 2>&1; then
+            for c in llvm-objcopy-19 llvm-objcopy-18 llvm-objcopy-17; do
+              if command -v "$c" >/dev/null 2>&1; then
+                sudo ln -sf "$(command -v "$c")" /usr/local/bin/llvm-objcopy
+                break
+              fi
+            done
+          fi
+          llvm-objcopy --version | head -1
 
       # The modules' objects take several GB: make room on the runner.
       - name: Free disk space

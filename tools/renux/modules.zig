@@ -92,6 +92,9 @@ pub fn build(b: *Build, opts: Options) *Build.Step {
     run.addArg("NO_XREF=yes");
     // BSD xargs -J and GNU xargs differ; -I is the portable spelling.
     run.addArg("XARGS_J=-I");
+    // GNU objcopy has no elf64-x86-64-freebsd target (the linux module's
+    // 32-bit vDSO needs it), and it cannot write the FreeBSD OSABI.
+    run.addArg("OBJCOPY=llvm-objcopy");
     // The target compiler and linker.  `zig clang` needs the target here:
     // the host is not the machine the modules run on.
     run.addArg(b.fmt("CC={s} clang -target {s} -resource-dir={s}", .{ b.graph.zig_exe, opts.triple, zig_lib }));

@@ -61,8 +61,9 @@ Kernel modules are FreeBSD's `sys/modules` Makefiles, run by the bmake Zig
 builds from the tree against the kernel's generated headers.  The default
 is `-Dmodules=zfs`; a comma-separated list builds those modules
 (`-Dmodules=zfs,accf_http`), and `-Dmodules=all` builds every one.  The
-`.ko` files stay in `.zig-cache/modules/obj`; the image does not include
-them yet.
+module build needs `llvm-objcopy` (GNU objcopy has no FreeBSD target).
+The `.ko` files stay in `.zig-cache/modules/obj`; the image does not
+include them yet.
 
 | Option | Effect |
 | ------ | ------ |
