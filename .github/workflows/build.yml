@@ -92,8 +92,9 @@ jobs:
       - name: Host dependencies
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends binutils file
+          sudo apt-get install -y -q --no-install-recommends binutils file sharutils
           objcopy --version | head -1
+          uudecode --version 2>&1 | head -1
 
       # The modules' objects take several GB: make room on the runner.
       - name: Free disk space

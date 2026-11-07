@@ -792,6 +792,28 @@ fn objcopy(args: []const [:0]const u8) void {
     }
 }
 
+// --- uudecode -------------------------------------------------------------
+//
+// The firmware modules decode their .uu files with `uudecode -p`; GNU
+// uudecode has no -p, but both BSD and GNU write to standard output for
+// -o /dev/stdout.  Replace this process with the host's uudecode, so its
+// standard output is the rule's output file.
+
+fn uudecode(args: []const [:0]const u8) void {
+    var argv: std.ArrayList([]const u8) = .empty;
+    argv.append(gpa, "/usr/bin/uudecode") catch @panic("OOM");
+    for (args) |a| {
+        if (mem.eql(u8, a, "-p")) {
+            argv.append(gpa, "-o") catch @panic("OOM");
+            argv.append(gpa, "/dev/stdout") catch @panic("OOM");
+        } else {
+            argv.append(gpa, a) catch @panic("OOM");
+        }
+    }
+    const err: process.ReplaceError = process.replace(io, .{ .argv = argv.items, .environ_map = environ });
+    fatal("/usr/bin/uudecode: {t}", .{err});
+}
+
 // --- The kernel modules ----------------------------------------------------
 //
 // Copy the .ko files of objdir to outdir, keeping only the selected module
@@ -833,11 +855,14 @@ pub fn main(init: process.Init) void {
     const args: []const [:0]const u8 = init.minimal.args.toSlice(gpa) catch @panic("OOM");
     if (args.len >= 1 and mem.eql(u8, fs.path.basename(args[0]), "objcopy"))
         return objcopy(args[1..]);
+    if (args.len >= 1 and mem.eql(u8, fs.path.basename(args[0]), "uudecode"))
+        return uudecode(args[1..]);
     if (args.len < 2) fatal("usage: kgen command args...", .{});
     const cmd: [:0]const u8 = args[1];
     const a: []const [:0]const u8 = args[2..];
     const eql: fn (comptime type, anytype, anytype) bool = mem.eql;
     if (eql(u8, cmd, "objcopy")) return objcopy(a);
+    if (eql(u8, cmd, "uudecode")) return uudecode(a);
     if (eql(u8, cmd, "copy-modules") and a.len >= 2) return copyModules(a[0], a[1], a[2..]);
     if (eql(u8, cmd, "genassym") and a.len == 2) return genassym(a[0], a[1]);
     if (eql(u8, cmd, "genoffset") and a.len == 2) return genoffset(a[0], a[1]);

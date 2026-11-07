@@ -61,10 +61,11 @@ Kernel modules are FreeBSD's `sys/modules` Makefiles, run by the bmake Zig
 builds from the tree against the kernel's generated headers.  The default
 is `-Dmodules=zfs`; a comma-separated list builds those modules
 (`-Dmodules=zfs,accf_http`), and `-Dmodules=all` builds every one.  The
-build wraps the host's `objcopy` to write FreeBSD ELF output.  The selected
-modules are installed in `zig-out/boot/modules`; the disk image, the
-installer's kernel set and the live ISO carry them in `/boot/modules`.
-The official media pass `-Dmodules=all`.
+build wraps the host's `objcopy` to write FreeBSD ELF output and its
+`uudecode` to decode the firmware `.uu` files on hosts with GNU uudecode.
+The selected modules are installed in `zig-out/boot/modules`; the disk
+image, the installer's kernel set and the live ISO carry them in
+`/boot/modules`.  The official media pass `-Dmodules=all`.
 
 | Option | Effect |
 | ------ | ------ |

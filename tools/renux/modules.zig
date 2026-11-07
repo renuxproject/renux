@@ -112,10 +112,12 @@ pub fn build(b: *Build, opts: Options) Modules {
     run.addArg("NO_XREF=yes");
     // BSD xargs -J and GNU xargs differ; -I is the portable spelling.
     run.addArg("XARGS_J=-I");
-    // The host's objcopy, wrapped to write FreeBSD ELF output (see kgen).
-    const objcopy: *Build.Step.WriteFile = b.addWriteFiles();
-    _ = objcopy.addCopyFile(opts.kgen.getEmittedBin(), "objcopy");
-    run.addPrefixedDirectoryArg("PATH+=", objcopy.getDirectory());
+    // The host's objcopy and uudecode, wrapped for FreeBSD ELF output and
+    // for uudecode -p (see kgen).
+    const wrappers: *Build.Step.WriteFile = b.addWriteFiles();
+    _ = wrappers.addCopyFile(opts.kgen.getEmittedBin(), "objcopy");
+    _ = wrappers.addCopyFile(opts.kgen.getEmittedBin(), "uudecode");
+    run.addPrefixedDirectoryArg("PATH+=", wrappers.getDirectory());
     run.addArg("OBJCOPY=objcopy");
     // The target compiler and linker.  `zig clang` needs the target here:
     // the host is not the machine the modules run on.
