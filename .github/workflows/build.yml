@@ -59,15 +59,6 @@ jobs:
       - name: zig build kernel
         run: zig build kernel --summary failures
 
-      - name: zig build modules
-        run: zig build modules -Dmodules=zfs --summary failures
-
-      - name: The ZFS module
-        run: |
-          f=$(find .zig-cache/modules -name 'zfs.ko' | head -1)
-          file "$f"
-          readelf -h "$f" | grep -E 'Type|Machine|OS/ABI'
-
       - name: The kernel
         run: |
           file zig-out/boot/kernel/kernel
@@ -78,4 +69,53 @@ jobs:
         with:
           name: kernel-${{ github.sha }}
           path: zig-out/boot/kernel/kernel
+          retention-days: 14
+
+  modules:
+    name: all kernel modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zig ${{ env.ZIG_VERSION }}
+        run: |
+          set -eu
+          tarball="zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+          curl -fsSL -o "$tarball" "https://ziglang.org/download/${ZIG_VERSION}/${tarball}"
+          echo "${ZIG_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/zig"
+          tar -xJf "$tarball" -C "$RUNNER_TEMP/zig" --strip-components=1
+          rm "$tarball"
+          echo "$RUNNER_TEMP/zig" >> "$GITHUB_PATH"
+
+      - name: Host dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends binutils file
+
+      # The modules' objects take several GB: make room on the runner.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h .
+
+      - name: zig build modules
+        run: zig build modules -Dmodules=all --summary failures
+
+      - name: The modules
+        run: |
+          set -eu
+          count=$(find .zig-cache/modules -name '*.ko' | wc -l)
+          echo "modules built: $count" | tee -a "$GITHUB_STEP_SUMMARY"
+          find .zig-cache/modules -name '*.ko' -printf '%f\n' | sort > modules.txt
+          head -5 modules.txt | while read -r m; do
+            f=$(find .zig-cache/modules -name "$m" | head -1)
+            file "$f"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: module-list-${{ github.sha }}
+          path: modules.txt
           retention-days: 14
