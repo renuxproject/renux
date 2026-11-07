@@ -25,6 +25,12 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# Renux's changes to this file are under the Mozilla Public License,
+# v. 2.0: https://mozilla.org/MPL/2.0/.
+#
 #
 ############################################################ INCLUDES
 
@@ -254,6 +260,7 @@ msg_disk_singular="disk"
 msg_encrypt_disks="Encrypt Disks?"
 msg_encrypt_disks_help="Use geli(8) to encrypt all data partitions"
 msg_error="Error"
+msg_no_bios_boot="This $OSNAME medium has no BIOS boot code (/boot/pmbr and /boot/gptzfsboot): $OSNAME boots by UEFI only. Choose a UEFI boot type in the Partition Scheme option, or restart the installer in UEFI mode. The disk was not changed."
 msg_force_4k_sectors="Force 4K Sectors?"
 msg_force_4k_sectors_help="Align partitions to 4K sector boundaries and set vfs.zfs.vdev.min_auto_ashift=12"
 msg_freebsd_installer="$OSNAME Installer"
@@ -1527,6 +1534,16 @@ for pool in ${pools}; do
 done
 
 #
+# Renux: whether this medium has the BIOS boot code that zfsboot writes
+# (gpart bootcode -b /boot/pmbr -p /boot/gptzfsboot).  Renux's build makes
+# only the EFI loader, so its media boot by UEFI only.
+#
+zfsboot_has_bios_boot()
+{
+	[ -f /boot/pmbr -a -f /boot/gptzfsboot ]
+}
+
+#
 # Determine default boot type
 #
 case $(uname -m) in
@@ -1540,7 +1557,13 @@ arm64|riscv)
 	bootmethod=$( sysctl -n machdep.bootmethod )
 	f_dprintf "machdep.bootmethod=[%s]" "$bootmethod"
 	if [ "$bootmethod" = "UEFI" ]; then
-		: ${ZFSBOOT_BOOT_TYPE:=BIOS+UEFI}
+		# Renux: BIOS+UEFI only when the medium has the BIOS boot
+		# code; Renux's build makes only loader.efi.
+		if zfsboot_has_bios_boot; then
+			: ${ZFSBOOT_BOOT_TYPE:=BIOS+UEFI}
+		else
+			: ${ZFSBOOT_BOOT_TYPE:=UEFI}
+		fi
 		: ${ZFSBOOT_PARTITION_SCHEME:=GPT}
 	else
 		: ${ZFSBOOT_BOOT_TYPE:=BIOS}
@@ -1616,6 +1639,18 @@ while :; do
 				           "$teeny_disks"
 				continue
 			fi
+		fi
+
+		#
+		# Renux: a BIOS boot type needs the BIOS boot code; without it,
+		# zfsboot would fail after it destroyed the disk's partitions.
+		#
+		if [ "$ZFSBOOT_BOOT_TYPE" = "BIOS" -o \
+		     "$ZFSBOOT_BOOT_TYPE" = "BIOS+UEFI" ] &&
+		   ! zfsboot_has_bios_boot
+		then
+			f_show_err "$msg_no_bios_boot"
+			continue
 		fi
 
 		#

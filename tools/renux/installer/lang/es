@@ -96,6 +96,11 @@ renux_tr()
 		t="Error" ;;
 	"Warning")
 		t="Aviso" ;;
+	# auto, zfsboot: the media boot by UEFI only
+	"Renux boots by UEFI only, and this computer started the installer by BIOS (legacy). Restart it and choose the installer's UEFI entry in the firmware's boot menu. The disk was not changed.")
+		t="Renux arranca solo por UEFI, y este equipo inició el instalador por BIOS (heredado). Reinícielo y elija la entrada UEFI del instalador en el menú de arranque del firmware. El disco no se modificó." ;;
+	"This Renux medium has no BIOS boot code (/boot/pmbr and /boot/gptzfsboot): Renux boots by UEFI only. Choose a UEFI boot type in the Partition Scheme option, or restart the installer in UEFI mode. The disk was not changed.")
+		t="Este medio de Renux no tiene el código de arranque BIOS (/boot/pmbr y /boot/gptzfsboot): Renux arranca solo por UEFI. Elija un tipo de arranque UEFI en la opción Partition Scheme, o reinicie el instalador en modo UEFI. El disco no se modificó." ;;
 	"Partitioning")
 		t="Particionado" ;;
 	"How would you like to partition your disk?")

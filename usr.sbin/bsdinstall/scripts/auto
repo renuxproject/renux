@@ -377,6 +377,21 @@ if f_interactive; then
 	esac
 fi
 
+# Renux: the media boot by UEFI only, and have no BIOS boot code
+# (/boot/pmbr, /boot/gptboot): Renux's build makes only loader.efi.  On a
+# system started by BIOS, partitioning would destroy the disk's partitions
+# and then fail to make it bootable.  Stop before the disk is touched.
+case $( uname -m ) in
+amd64|i386)
+	if [ "$( sysctl -n machdep.bootmethod 2> /dev/null )" != UEFI ] &&
+	   [ ! -f /boot/pmbr -o ! -f /boot/gptboot ]; then
+		bsddialog --backtitle "$OSNAME Installer" --title "Error" \
+		    --msgbox "$OSNAME boots by UEFI only, and this computer started the installer by BIOS (legacy). Restart it and choose the installer's UEFI entry in the firmware's boot menu. The disk was not changed." 0 0
+		exit 1
+	fi
+	;;
+esac
+
 PMODES="
 	'$msg_auto_ufs' '$msg_auto_ufs_desc' '$msg_auto_ufs_help'
 	'$msg_manual' '$msg_manual_desc' '$msg_manual_help'
