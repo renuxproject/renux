@@ -54,6 +54,8 @@ pub const World: type = struct {
     /// makefs and mkimg, which buildworld makes for the host.
     makefs: []const u8,
     mkimg: []const u8,
+    /// The zigtools wrappers (cc, c++, cpp, clang, ..., ld.lld).
+    tools: LazyPath,
 };
 
 /// The names zigtools answers to (zigtools.zig).
@@ -72,10 +74,12 @@ const make_options: [8][]const u8 = .{
     "-DWITHOUT_BOOT",
 };
 
-/// The absolute path of the source tree.
+/// The absolute path of the source tree.  `joinString` keeps the path the
+/// build was given: it does not call realpath(2), which not every host (or
+/// Linux compatibility layer) implements for a directory handle.
 fn treeDir(b: *Build) []const u8 {
-    return b.root.root_dir.handle.realPathFileAlloc(b.graph.io, b.root.subPathOrDot(), b.allocator) catch |err|
-        debug.panic("source tree: {t}", .{err});
+    if (b.root.root_dir.path) |p| return p;
+    return b.root.joinString(b.allocator, "") catch @panic("OOM");
 }
 
 /// A make of the world: kgen env sets the toolchain, then bmake runs
@@ -162,5 +166,6 @@ pub fn build(b: *Build, opts: Options) World {
         .destdir = destdir,
         .makefs = b.fmt("{s}/usr/sbin/makefs", .{legacy}),
         .mkimg = b.fmt("{s}/usr/bin/mkimg", .{legacy}),
+        .tools = tools,
     };
 }

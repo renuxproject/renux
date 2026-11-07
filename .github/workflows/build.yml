@@ -59,6 +59,15 @@ jobs:
       - name: zig build kernel
         run: zig build kernel --summary failures
 
+      - name: zig build modules
+        run: zig build modules -Dmodules=zfs --summary failures
+
+      - name: The ZFS module
+        run: |
+          f=$(find .zig-cache/modules -name 'zfs.ko' | head -1)
+          file "$f"
+          readelf -h "$f" | grep -E 'Type|Machine|OS/ABI'
+
       - name: The kernel
         run: |
           file zig-out/boot/kernel/kernel

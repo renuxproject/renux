@@ -211,11 +211,11 @@ fn buildBmake(b: *Build) *Build.Step.Compile {
     return bmake;
 }
 
-/// The absolute path of a file of the tree.
+/// The absolute path of a file of the tree.  `joinString` keeps the path
+/// the build was given: it does not call realpath(2), which not every
+/// host (or Linux compatibility layer) implements for a directory handle.
 fn absolutePath(b: *Build, sub_path: []const u8) []const u8 {
-    const path: Build.Cache.Path = b.root.join(b.allocator, sub_path) catch @panic("OOM");
-    return path.root_dir.handle.realPathFileAlloc(b.graph.io, path.subPathOrDot(), b.allocator) catch |err|
-        debug.panic("{s}: {t}", .{ sub_path, err });
+    return b.root.joinString(b.allocator, sub_path) catch @panic("OOM");
 }
 
 /// _MAKE_VERSION of contrib/bmake/VERSION.

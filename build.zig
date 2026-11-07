@@ -60,6 +60,7 @@ const hosttools: type = @import("tools/renux/hosttools.zig");
 const kernel: type = @import("tools/renux/kernel.zig");
 const stand: type = @import("tools/renux/stand.zig");
 const world: type = @import("tools/renux/world.zig");
+const kmods: type = @import("tools/renux/modules.zig");
 const machine_mod: type = @import("tools/renux/machine.zig");
 const Machine: type = machine_mod.Machine;
 
@@ -109,6 +110,7 @@ const TreeReader: type = struct {
 pub fn build(b: *Build) void {
     const machine: Machine = b.option(Machine, "machine", "Target machine (default: amd64)") orelse .amd64;
     const kernconf: []const u8 = b.option([]const u8, "kernconf", "Kernel configuration in sys/<machine>/conf (default: GENERIC)") orelse "GENERIC";
+    const modules_opt: []const u8 = b.option([]const u8, "modules", "Kernel modules: all, or a comma-separated list (default: zfs)") orelse "zfs";
     if (machine.config() == null) {
         debug.print("error: the Zig build does not support {s} yet; it supports:\n", .{machine.name()});
         for (enums.values(Machine)) |m| if (m.config() != null) debug.print("  {s}\n", .{m.name()});
@@ -198,6 +200,19 @@ pub fn build(b: *Build) void {
 
     // The media: a bootable disk, and an installer ISO.
     const config: machine_mod.Config = machine.config().?;
+
+    // The kernel modules, built by FreeBSD's sys/modules Makefiles against
+    // the kernel configuration above.
+    const modules_step: *Build.Step = b.step("modules", "Build the kernel modules into .zig-cache/modules (default: zfs; -Dmodules=all)");
+    modules_step.dependOn(kmods.build(b, .{
+        .machine = machine,
+        .triple = config.triple(b, shellVar(newvers, "REVISION")),
+        .tools = w.tools,
+        .hosttools = tools,
+        .kgen = kgen,
+        .include = k.include,
+        .selection = modules_opt,
+    }));
     const image_exe: *Build.Step.Compile = b.addExecutable(.{
         .name = "image",
         .root_module = b.createModule(.{

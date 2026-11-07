@@ -53,6 +53,9 @@ pub const Options: type = struct {
 pub const Kernel: type = struct {
     kernel: LazyPath,
     debug: LazyPath,
+    /// The generated headers: opt_*.h, vnode_if.h, machine/...  This is
+    /// the KERNBUILDDIR the modules are built against.
+    include: LazyPath,
 };
 
 // --- Command arguments -----------------------------------------------------
@@ -701,7 +704,7 @@ const Builder: type = struct {
         // debug sections only.
         const full: LazyPath = k.link("kernel.full", false, hack_pico, vers_o, offset_test);
         const kernel: LazyPath = k.link("kernel", true, hack_pico, vers_o, offset_test);
-        return .{ .kernel = kernel, .debug = full };
+        return .{ .kernel = kernel, .debug = full, .include = gen.getDirectory() };
     }
 
     /// SYSTEM_LD of kern.pre.mk: locore.o, OBJS in config(8)'s order, the

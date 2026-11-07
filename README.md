@@ -6,15 +6,15 @@ Renux is a general-purpose operating system: easy to maintain, portable, and
 built with Zig alone. It started from FreeBSD 15.1 and keeps FreeBSD's
 development flowing in, while it grows into a system of its own.
 
-> **Status:** Renux 0.1 "Aurora" — experimental; amd64 and UEFI only.
-> The Zig build builds the whole system; a few host tools still come from
-> the host.
+> **Status:** in development, toward Renux 0.1 "Aurora". Experimental;
+> amd64 and UEFI only. The Zig build builds the whole system; a few host
+> tools still come from the host.
 
 ## Download
 
-The current release is [Renux 0.1 "Aurora"](https://github.com/renuxproject/renux/releases/tag/v0.1.0):
-an installer ISO and a disk image for amd64, with their SHA256.  It is
-experimental; read the release notes before installing.
+Nightly builds are on [GitHub Releases](https://github.com/renuxproject/renux/releases).
+Renux 0.1 "Aurora" is not released yet: the kernel modules build, but the
+image does not include them and the system is still experimental.
 
 ## Why Renux
 
@@ -37,6 +37,7 @@ zig build hosttools    # yacc, awk, rpcgen and vtfontcvt, built from this tree
 zig build kernel       # the kernel, in zig-out/boot/kernel
 zig build loader       # the EFI loader and its Lua scripts, in zig-out/boot
 zig build world        # the userland, installed without root in .zig-cache/world
+zig build modules      # kernel modules, in .zig-cache/modules (default: zfs)
 zig build image        # a bootable disk, zig-out/renux-amd64.img
 zig build iso          # the installer, zig-out/renux-amd64-installer.iso
 zig build run          # that disk in QEMU, with UEFI firmware
@@ -55,6 +56,13 @@ host's bsdtar for the distribution sets.  Building those from the tree
 too is the next step.  `zig build run` needs QEMU and its UEFI firmware.
 Nightly snapshots are made by the `snapshot` workflow on GitHub; a release
 is made by the `release` workflow when a `v*` tag is pushed.
+
+Kernel modules are FreeBSD's `sys/modules` Makefiles, run by the bmake Zig
+builds from the tree against the kernel's generated headers.  The default
+is `-Dmodules=zfs`; a comma-separated list builds those modules
+(`-Dmodules=zfs,accf_http`), and `-Dmodules=all` builds every one.  The
+`.ko` files stay in `.zig-cache/modules/obj`; the image does not include
+them yet.
 
 | Option | Effect |
 | ------ | ------ |
