@@ -20,7 +20,7 @@
     .dependencies = .{
         .zig_x86_64_freebsd = .{
             .url = "https://ziglang.org/download/0.17.1/zig-x86_64-freebsd-0.17.1.tar.xz",
-            .hash = "N-V-__8AAC1LVBacIZNvpn51GWHB1BtVKwbBBibkhHuC--FQ",
+            .hash = "N-V-__8AAC1LVBa3jUktVXXicmFIl7wHm-4oe4LzXhgVI4WG",
             .lazy = true,
         },
     },
