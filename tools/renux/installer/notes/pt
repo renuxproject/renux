@@ -4,8 +4,8 @@ O Renux é um sistema operacional de uso geral, fácil de manter e
 portátil, compilado só com Zig: instale o Zig e compile o sistema
 inteiro.
 
-Esta é a primeira versão do Renux, a 0.1.1 "Aurora".  É experimental:
-não a instale num equipamento com dados importantes.
+Esta é a 0.1.1 "Aurora" do Renux, a primeira atualização da 0.1.  É
+experimental: não a instale num equipamento com dados importantes.
 
 
 O que inclui
@@ -20,6 +20,8 @@ O que inclui
     distribui como módulos.
   - O instalador oferece Automático (UFS) e Automático (ZFS); o ZFS
     inclui o módulo do kernel, zpool/zfs e o suporte do carregador.
+  - A versão tem um ISO de instalação para DVD e uma memstick de
+    instalação para um USB ou um disco externo.
   - O Zig é o compilador do sistema: zig, cc e c++ compilam Zig, C e
     C++ logo depois da instalação.
   - O instalador está em inglês, espanhol e português, e traz estas

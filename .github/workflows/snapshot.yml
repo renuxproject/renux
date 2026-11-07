@@ -7,11 +7,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #
-# A snapshot of Renux: `zig build image iso` makes the whole system (the
-# world, the kernel and the loader) into a bootable disk and an installer
-# ISO, as on any host, with the Zig the build is written for.  They are
-# kept, compressed, with their sha256 as the run's artifact; with
-# `publish`, they also become a pre-release.
+# A snapshot of Renux: `zig build image iso memstick` makes the whole
+# system (the world, the kernel and the loader) into a bootable disk, an
+# installer ISO and an installer memstick, as on any host, with the Zig the
+# build is written for.  They are kept, compressed, with their sha256 as
+# the run's artifact; with `publish`, they also become a pre-release.
 #
 # The Renux Nightly build: every day at 18:00 in Brasília (21:00 UTC;
 # Brasília has no daylight saving time), the snapshot is made and
@@ -94,8 +94,8 @@ jobs:
         run: |
           echo "name=renux-nightly-${MACHINE}-$(date -u +%Y%m%d)-$(git rev-parse --short=10 HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: zig build image iso
-        run: zig build image iso -Dmachine="$MACHINE" -Dmodules=all --summary failures
+      - name: zig build image iso memstick
+        run: zig build image iso memstick -Dmachine="$MACHINE" -Dmodules=all --summary failures
 
       - name: Compress
         env:
@@ -105,8 +105,9 @@ jobs:
           mkdir snapshot
           xz -T0 -6 -c "zig-out/renux-${MACHINE}.img" > "snapshot/${NAME}.img.xz"
           xz -T0 -6 -c "zig-out/renux-${MACHINE}-installer.iso" > "snapshot/${NAME}-installer.iso.xz"
+          xz -T0 -6 -c "zig-out/renux-${MACHINE}-memstick.img" > "snapshot/${NAME}-memstick.img.xz"
           cd snapshot
-          sha256sum "${NAME}.img.xz" "${NAME}-installer.iso.xz" > SHA256
+          sha256sum "${NAME}.img.xz" "${NAME}-installer.iso.xz" "${NAME}-memstick.img.xz" > SHA256
           cat SHA256 | tee -a "$GITHUB_STEP_SUMMARY"
           ls -l
 

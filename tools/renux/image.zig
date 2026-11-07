@@ -7,10 +7,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 //
-// image.zig - Renux's media: a bootable disk, and an installer ISO.
+// image.zig - Renux's media: a bootable disk, an installer ISO, and an
+// installer memstick.
 //
-//   image disk OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MKIMG
-//   image iso  OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG RCLOCAL INSTALLER
+//   image disk     OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MODULES MKIMG
+//   image iso      OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MODULES RCLOCAL INSTALLER
+//   image memstick OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MODULES RCLOCAL INSTALLER MKIMG
 //
 // ZIG is the Zig the system carries as its compiler (ziglang.org's build
 // for the machine): /usr/lib/zig, /usr/bin/zig, and cc, c++, cpp, ld,
@@ -54,6 +56,9 @@ fn fatal(comptime format: []const u8, args: anytype) noreturn {
 }
 
 fn absolute(path: []const u8) []const u8 {
+    // The build passes paths of its cache, which are already absolute; a
+    // relative one (a hand run) is resolved here.
+    if (fs.path.isAbsolute(path)) return path;
     return Io.Dir.cwd().realPathFileAlloc(io, path, gpa) catch |err| fatal("{s}: {t}", .{ path, err });
 }
 
@@ -370,9 +375,13 @@ fn addDir(spec: *std.ArrayList(u8), source: []const u8, path: []const u8, file_m
     }
 }
 
-/// The installer ISO.
-fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, installer: []const u8) void {
-    const label: []const u8 = "RENUX_INSTALL";
+/// The live system's root, in STAGE/dir: the world, /boot with the kernel
+/// and the modules, the distribution sets base.txz and kernel.txz under
+/// /usr/freebsd-dist, and the Renux installer (bsdinstall, named Renux by
+/// OSNAME, with Renux's welcome, languages and notes).  It is what the ISO
+/// and the memstick boot into; each adds how its root is mounted, and the
+/// filesystem that holds it.
+fn live(stage: []const u8, p: Parts, rc_local: []const u8, installer: []const u8, dir: []const u8) std.ArrayList(u8) {
     const dist: []const u8 = fmt.allocPrint(gpa, "{s}/dist", .{stage}) catch @panic("OOM");
     Io.Dir.cwd().createDirPath(io, dist) catch |err| fatal("{s}: {t}", .{ dist, err });
 
@@ -384,7 +393,7 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
     addZig(&base, p);
     const base_line: []const u8 = distSet(stage, dist, "base", root, base, "Base system (MANDATORY)");
 
-    // kernel.txz: the kernel.
+    // kernel.txz: the kernel and the modules.
     root = fmt.allocPrint(gpa, "{s}/kernel", .{stage}) catch @panic("OOM");
     linkTree(p.destdir, root);
     var kernel: std.ArrayList(u8) = .empty;
@@ -393,8 +402,8 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
     addModules(&kernel, p);
     const kernel_line: []const u8 = distSet(stage, dist, "kernel", root, kernel, "Kernel (MANDATORY)");
 
-    // The live system: the world, /boot with the kernel, and the sets.
-    root = fmt.allocPrint(gpa, "{s}/iso", .{stage}) catch @panic("OOM");
+    // The live system itself.
+    root = fmt.allocPrint(gpa, "{s}/{s}", .{ stage, dir }) catch @panic("OOM");
     linkTree(p.destdir, root);
     var spec: std.ArrayList(u8) = worldSpec(p);
     addBoot(&spec, p);
@@ -407,17 +416,7 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
         const source: []const u8 = fmt.allocPrint(gpa, "{s}/{s}", .{ dist, set }) catch @panic("OOM");
         entry(&spec, path, "0644", readFile(source));
     }
-    // The CD is the root, read-only (release/Makefile, disc1).
-    entry(&spec, "etc/fstab", "0644", fmt.allocPrint(gpa, "/dev/iso9660/{s} / cd9660 ro 0 0\n", .{label}) catch @panic("OOM"));
     entry(&spec, "etc/rc.conf", "0644", "hostname=\"renux\"\nhostid_enable=\"NO\"\n");
-    entry(&spec, "boot/loader.conf", "0644", fmt.allocPrint(gpa,
-        \\vfs.root.mountfrom="cd9660:/dev/iso9660/{s}"
-        \\vfs.mountroot.timeout="10"
-        \\kernels_autodetect="NO"
-        \\loader_menu_multi_user_prompt="Installer"
-        \\loader_menu_title="Renux Installer"
-        \\
-    , .{label}) catch @panic("OOM"));
     // The network configuration of the installer goes to /tmp.
     symlinkEntry(&spec, "etc/resolv.conf", "/tmp/bsdinstall_etc/resolv.conf");
     // Start the installer, named Renux.
@@ -433,6 +432,23 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
     addDir(&spec, fs.path.join(gpa, &.{ installer, "bin" }) catch @panic("OOM"), libexec ++ "/bin", "0555");
     addDir(&spec, fs.path.join(gpa, &.{ installer, "lang" }) catch @panic("OOM"), libexec ++ "/lang", "0444");
     addDir(&spec, fs.path.join(gpa, &.{ installer, "notes" }) catch @panic("OOM"), libexec ++ "/notes", "0444");
+    return spec;
+}
+
+/// The installer ISO: the live system on a CD, read-only, booted by UEFI
+/// with El Torito (release/Makefile, disc1).
+fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, installer: []const u8) void {
+    const label: []const u8 = "RENUX_INSTALL";
+    var spec: std.ArrayList(u8) = live(stage, p, rc_local, installer, "iso");
+    entry(&spec, "etc/fstab", "0644", fmt.allocPrint(gpa, "/dev/iso9660/{s} / cd9660 ro 0 0\n", .{label}) catch @panic("OOM"));
+    entry(&spec, "boot/loader.conf", "0644", fmt.allocPrint(gpa,
+        \\vfs.root.mountfrom="cd9660:/dev/iso9660/{s}"
+        \\vfs.mountroot.timeout="10"
+        \\kernels_autodetect="NO"
+        \\loader_menu_multi_user_prompt="Installer"
+        \\loader_menu_title="Renux Installer"
+        \\
+    , .{label}) catch @panic("OOM"));
     const spec_path: []const u8 = writeSpec(stage, "iso.mtree", spec);
 
     // UEFI boot by El Torito (release/amd64/mkisoimages.sh).
@@ -443,11 +459,38 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
     run(&.{ p.makefs, "-D", "-N", etc, "-t", "cd9660", "-o", boot, "-o", "no-emul-boot", "-o", "platformid=efi", "-o", "rockridge", "-o", label_opt, "-o", "publisher=The Renux Project", "-F", spec_path, out, root });
 }
 
+/// The installer memstick: the live system on a GPT disk, in a UFS root,
+/// with the loader on an EFI system partition -- the medium a USB stick or
+/// an external disk boots from.
+fn memstick(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, installer: []const u8, mkimg: []const u8) void {
+    var spec: std.ArrayList(u8) = live(stage, p, rc_local, installer, "memstick");
+    entry(&spec, "etc/fstab", "0644", "/dev/gpt/rootfs\t/\tufs\trw\t1\t1\n");
+    entry(&spec, "boot/loader.conf", "0644",
+        \\vfs.root.mountfrom="ufs:/dev/gpt/rootfs"
+        \\vfs.mountroot.timeout="10"
+        \\kernels_autodetect="NO"
+        \\loader_menu_multi_user_prompt="Installer"
+        \\loader_menu_title="Renux Installer"
+        \\
+    );
+    const spec_path: []const u8 = writeSpec(stage, "memstick.mtree", spec);
+
+    // The root is UFS, so the loader reads it itself.
+    const root_img: []const u8 = fmt.allocPrint(gpa, "{s}/root.img", .{stage}) catch @panic("OOM");
+    const etc: []const u8 = fmt.allocPrint(gpa, "{s}/etc", .{root}) catch @panic("OOM");
+    run(&.{ p.makefs, "-D", "-N", etc, "-B", "little", "-t", "ffs", "-o", "version=2,label=rootfs,softupdates=1", "-b", "30%", "-f", "30%", "-F", spec_path, root_img, root });
+
+    const esp_img: []const u8 = makeEsp(stage, p, "64m", "16");
+    const esp_part: []const u8 = fmt.allocPrint(gpa, "efi/efiesp:={s}", .{esp_img}) catch @panic("OOM");
+    const root_part: []const u8 = fmt.allocPrint(gpa, "freebsd-ufs/rootfs:={s}", .{root_img}) catch @panic("OOM");
+    run(&.{ mkimg, "-s", "gpt", "-p", esp_part, "-p", root_part, "-o", out });
+}
+
 pub fn main(init: process.Init) void {
     io = init.io;
     gpa = init.arena.allocator();
     const args: []const [:0]const u8 = init.minimal.args.toSlice(gpa) catch @panic("OOM");
-    if (args.len < 15) fatal("usage: image disk|iso OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MODULES MKIMG|RCLOCAL INSTALLER", .{});
+    if (args.len < 15) fatal("usage: image disk|iso|memstick OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MODULES MKIMG|RCLOCAL INSTALLER [MKIMG]", .{});
     const p: Parts = .{
         .makefs = args[4],
         .destdir = args[5],
@@ -464,5 +507,6 @@ pub fn main(init: process.Init) void {
     const stage: []const u8 = args[3];
     if (mem.eql(u8, args[1], "disk")) return disk(out, stage, p, args[14]);
     if (mem.eql(u8, args[1], "iso") and args.len == 16) return iso(out, stage, p, absolute(args[14]), absolute(args[15]));
+    if (mem.eql(u8, args[1], "memstick") and args.len == 17) return memstick(out, stage, p, absolute(args[14]), absolute(args[15]), args[16]);
     fatal("unknown medium {s}", .{args[1]});
 }

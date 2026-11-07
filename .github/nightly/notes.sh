@@ -39,7 +39,7 @@ date=$(printf '%s-%s-%s' "$(echo "$day" | cut -c1-4)" "$(echo "$day" | cut -c5-6
 cat <<NOTES
 ![Renux Nightly builds](https://raw.githubusercontent.com/$repo/$commit/.github/nightly/banner.png)
 
-**Renux in development** for $machine, built on $date from [\`$short\`]($url/commit/$commit) by \`zig build image iso\`.
+**Renux in development** for $machine, built on $date from [\`$short\`]($url/commit/$commit) by \`zig build image iso memstick\`.
 
 > [!WARNING]
 > A nightly build is for testing: things change, and can break, from one build to the next. UEFI only. In the installer, choose UFS: ZFS is not built yet.
@@ -59,13 +59,15 @@ cat <<NOTES
 | File | What it is |
 | ---- | ---------- |
 | \`$name-installer.iso.xz\` | The installer: it boots into the Renux installer, which sets up the disk and the network and installs the system. |
+| \`$name-memstick.img.xz\` | The installer for a USB stick or an external disk: write it with \`dd\`. |
 | \`$name.img.xz\` | A disk with the system ready, for a virtual machine or to write to a disk. |
-| \`SHA256\` | The sha256 of both. |
+| \`SHA256\` | The sha256 of the three. |
 
 ### Check and unpack
 
 \`\`\`sh
 sha256sum -c SHA256
 unxz $name-installer.iso.xz
+unxz $name-memstick.img.xz
 \`\`\`
 NOTES

@@ -32,6 +32,9 @@
 //                          loader, in zig-out/renux-<machine>.img
 //   zig build iso          the installer ISO (bsdinstall), in
 //                          zig-out/renux-<machine>-installer.iso
+//   zig build memstick     the installer memstick: a GPT disk with an ESP
+//                          and a UFS root, for a USB stick or an external
+//                          disk, in zig-out/renux-<machine>-memstick.img
 //   zig build run          the disk in QEMU, with UEFI firmware (QEMU is
 //                          the one program besides Zig the build may use,
 //                          and only for this step)
@@ -234,6 +237,10 @@ pub fn build(b: *Build) void {
     const install_iso: *Build.Step.InstallFile = b.addInstallFile(iso, b.fmt("renux-{s}-installer.iso", .{machine.name()}));
     const iso_step: *Build.Step = b.step("iso", "Make the installer ISO in zig-out/renux-<machine>-installer.iso");
     iso_step.dependOn(&install_iso.step);
+    const memstick: Build.LazyPath = memstickMedium(b, image_exe, "renux-memstick.img", w, k, l, m, machine, config, zig_dir);
+    const install_memstick: *Build.Step.InstallFile = b.addInstallFile(memstick, b.fmt("renux-{s}-memstick.img", .{machine.name()}));
+    const memstick_step: *Build.Step = b.step("memstick", "Make the installer memstick in zig-out/renux-<machine>-memstick.img");
+    memstick_step.dependOn(&install_memstick.step);
 
     // The disk in QEMU.  -snapshot: what Renux writes is thrown away, and
     // the firmware's variables too.
@@ -307,6 +314,44 @@ fn medium(
     }
     if (installer) |dir| run.addDirectoryArg(dir);
     // The world is outside the Zig build's view: make the medium again
+    // whenever it is asked for.
+    run.has_side_effects = true;
+    run.step.dependOn(w.install);
+    return out;
+}
+
+/// The installer memstick: image.zig's memstick, made from the same parts
+/// as the ISO, and assembled into a GPT disk by mkimg.
+fn memstickMedium(
+    b: *Build,
+    image_exe: *Build.Step.Compile,
+    name: []const u8,
+    w: world.World,
+    k: kernel.Kernel,
+    l: stand.Loader,
+    modules: kmods.Modules,
+    machine: Machine,
+    config: machine_mod.Config,
+    /// The Zig the new system carries.
+    zig: Build.LazyPath,
+) Build.LazyPath {
+    const run: *Build.Step.Run = b.addRunArtifact(image_exe);
+    run.addArg("memstick");
+    const out: Build.LazyPath = run.addOutputFileArg(name);
+    _ = run.addOutputDirectoryArg("stage");
+    run.addArgs(&.{ w.makefs, w.destdir });
+    run.addFileArg(k.kernel);
+    run.addFileArg(l.efi);
+    run.addDirectoryArg(b.path("stand/lua"));
+    run.addFileArg(b.path("stand/defaults/loader.conf"));
+    run.addFileArg(b.path(b.fmt("sys/{s}/conf/GENERIC.hints", .{machine.name()})));
+    run.addArg(config.efi_boot);
+    run.addDirectoryArg(zig);
+    run.addDirectoryArg(modules.dir);
+    run.addFileArg(b.path("release/rc.local"));
+    run.addDirectoryArg(b.path("tools/renux/installer"));
+    run.addArg(w.mkimg);
+    // The world is outside the Zig build's view: make the memstick again
     // whenever it is asked for.
     run.has_side_effects = true;
     run.step.dependOn(w.install);

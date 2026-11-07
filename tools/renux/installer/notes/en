@@ -3,8 +3,8 @@ Renux 0.1.1 "Aurora" - Release Notes
 Renux is a general-purpose operating system, easy to maintain and
 portable, built with Zig alone: install Zig, build the whole system.
 
-This is the first release of Renux, 0.1.1 "Aurora".  It is experimental:
-do not install it on a machine that holds data you need.
+This is Renux 0.1.1 "Aurora", the first update of Renux 0.1.  It is
+experimental: do not install it on a machine that holds data you need.
 
 
 What is in it
@@ -17,6 +17,8 @@ What is in it
     amd64), including ZFS and the drivers FreeBSD ships as modules.
   - The installer offers Auto (UFS) and Auto (ZFS); ZFS includes the
     kernel module, zpool/zfs and the loader support.
+  - The release has an installer ISO for a DVD and an installer
+    memstick for a USB stick or an external disk.
   - Zig is the system's compiler: zig, cc and c++ compile Zig, C and
     C++ from the first boot.
   - The installer speaks English, Spanish and Portuguese, and has

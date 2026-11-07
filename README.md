@@ -13,8 +13,18 @@ development flowing in, while it grows into a system of its own.
 ## Download
 
 The current release is [Renux 0.1.1 "Aurora"](https://github.com/renuxproject/renux/releases/tag/v0.1.1):
-an installer ISO and a disk image for amd64, with their SHA256.  It is
+an installer ISO for a DVD, an installer memstick for a USB stick or an
+external disk, and a disk image for amd64, with their SHA256.  It is
 experimental; read the release notes before installing.
+
+To write the memstick (it erases the target disk):
+
+```sh
+unxz renux-0.1.1-amd64-memstick.img.xz
+sudo dd if=renux-0.1.1-amd64-memstick.img of=/dev/da0 bs=1m conv=fsync
+```
+
+Boot it by UEFI, not by BIOS (CSM, Legacy).
 
 ## Why Renux
 
@@ -39,7 +49,8 @@ zig build loader       # the EFI loader and its Lua scripts, in zig-out/boot
 zig build world        # the userland, installed without root in .zig-cache/world
 zig build modules      # kernel modules, in zig-out/boot/modules (default: zfs)
 zig build image        # a bootable disk, zig-out/renux-amd64.img
-zig build iso          # the installer, zig-out/renux-amd64-installer.iso
+zig build iso          # the installer ISO, zig-out/renux-amd64-installer.iso
+zig build memstick     # the installer for USB, zig-out/renux-amd64-memstick.img
 zig build run          # that disk in QEMU, with UEFI firmware
 ```
 
@@ -64,8 +75,8 @@ is `-Dmodules=zfs`; a comma-separated list builds those modules
 build wraps the host's `objcopy` to write FreeBSD ELF output and its
 `uudecode` to decode the firmware `.uu` files on hosts with GNU uudecode.
 The selected modules are installed in `zig-out/boot/modules`; the disk
-image, the installer's kernel set and the live ISO carry them in
-`/boot/modules`.  The official media pass `-Dmodules=all`.
+image, the installer's kernel set, the live ISO and the memstick carry
+them in `/boot/modules`.  The official media pass `-Dmodules=all`.
 
 | Option | Effect |
 | ------ | ------ |

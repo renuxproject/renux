@@ -7,11 +7,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #
-# A Renux release: `zig build image iso` makes the whole system (the
-# world, the kernel and the loader) into a bootable disk and an installer
-# ISO, as on any host, with the Zig the build is written for.  Pushing a
-# `v*` tag builds them and publishes a GitHub release with the two images
-# and their sha256.
+# A Renux release: `zig build image iso memstick` makes the whole system
+# (the world, the kernel and the loader) into a bootable disk, an installer
+# ISO and an installer memstick, as on any host, with the Zig the build is
+# written for.  Pushing a `v*` tag builds them and publishes a GitHub
+# release with the three images and their sha256.
 #
 # The release notes are `.github/release/<version>.md`, where <version> is
 # the tag without its leading `v`.
@@ -97,11 +97,11 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h .
 
-      - name: zig build image iso
+      - name: zig build image iso memstick
         id: media
         run: |
           set -o pipefail
-          zig build image iso -Dmachine="$MACHINE" -Dmodules=all --summary failures 2>&1 | tee media-build.log
+          zig build image iso memstick -Dmachine="$MACHINE" -Dmodules=all --summary failures 2>&1 | tee media-build.log
 
       - name: The failure
         if: failure()
@@ -120,6 +120,7 @@ jobs:
           mkdir -p dist
           xz -T0 -6 -c "zig-out/renux-${MACHINE}.img" > "dist/${NAME}.img.xz" 2> /tmp/xz-img.err
           xz -T0 -6 -c "zig-out/renux-${MACHINE}-installer.iso" > "dist/${NAME}-installer.iso.xz" 2> /tmp/xz-iso.err
+          xz -T0 -6 -c "zig-out/renux-${MACHINE}-memstick.img" > "dist/${NAME}-memstick.img.xz" 2> /tmp/xz-memstick.err
           cd dist
           sha256sum *.xz > SHA256
           cat SHA256 | tee -a "$GITHUB_STEP_SUMMARY"
@@ -130,10 +131,10 @@ jobs:
         run: |
           set +e
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          cat /tmp/xz-img.err /tmp/xz-iso.err 2>/dev/null >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/xz-img.err /tmp/xz-iso.err /tmp/xz-memstick.err 2>/dev/null >> "$GITHUB_STEP_SUMMARY"
           df -h . >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          msg=$(cat /tmp/xz-img.err /tmp/xz-iso.err 2>/dev/null | tail -20 | tr '\n' ' ' | cut -c1-8000)
+          msg=$(cat /tmp/xz-img.err /tmp/xz-iso.err /tmp/xz-memstick.err 2>/dev/null | tail -20 | tr '\n' ' ' | cut -c1-8000)
           echo "::error title=compression::$msg"
 
       - uses: actions/upload-artifact@v4
