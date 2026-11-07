@@ -94,7 +94,7 @@ lazy dependency of `build.zig.zon`, which only the media need.
 | Renux | Codename | Zig |
 | ----- | -------- | --- |
 | 0.1 | Aurora | 0.17.x (0.17.0, then its fixes such as 0.17.1) |
-| 0.2 | | 0.18.0 |
+| 0.2 | Jaguar | 0.18.0 |
 
 ## Relationship with FreeBSD
 
