@@ -1,10 +1,23 @@
-Renux 0.1.1 "Aurora" - Release Notes
+Renux 0.1.2 "Aurora" - Release Notes
 
 Renux is a general-purpose operating system, easy to maintain and
 portable, built with Zig alone: install Zig, build the whole system.
 
-This is Renux 0.1.1 "Aurora", the first update of Renux 0.1.  It is
+This is Renux 0.1.2 "Aurora", the second update of Renux 0.1.  It is
 experimental: do not install it on a machine that holds data you need.
+
+
+What is new in 0.1.2
+
+  - The installer no longer destroys a disk it cannot install on.  In
+    0.1.1, Auto (ZFS) prepared the disk to boot by BIOS too, a boot
+    code Renux does not have: it erased the disk's partitions and then
+    stopped with an error, leaving neither the old system nor Renux.
+    The installer now makes the disk for UEFI only.
+  - Renux boots by UEFI only.  When the installer was started by BIOS
+    (CSM, Legacy), it says so and stops before it touches the disk.
+  - The workarounds for booting GPT disks by BIOS on some Lenovo, HP,
+    Intel and Acer machines are gone.
 
 
 What is in it

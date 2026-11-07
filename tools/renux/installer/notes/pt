@@ -1,11 +1,25 @@
-Renux 0.1.1 "Aurora" - Notas da versão
+Renux 0.1.2 "Aurora" - Notas da versão
 
 O Renux é um sistema operacional de uso geral, fácil de manter e
 portátil, compilado só com Zig: instale o Zig e compile o sistema
 inteiro.
 
-Esta é a 0.1.1 "Aurora" do Renux, a primeira atualização da 0.1.  É
+Esta é a 0.1.2 "Aurora" do Renux, a segunda atualização da 0.1.  É
 experimental: não a instale num equipamento com dados importantes.
+
+
+Novidades da 0.1.2
+
+  - O instalador já não destrói um disco em que não consegue instalar.
+    Na 0.1.1, o Automático (ZFS) preparava o disco para iniciar também
+    por BIOS, com um código de arranque que o Renux não tem: apagava as
+    partições do disco e depois parava com um erro, sem deixar nem o
+    sistema anterior nem o Renux.  Agora o instalador prepara o disco
+    só para UEFI.
+  - O Renux inicia só por UEFI.  Se o instalador foi iniciado por BIOS
+    (CSM, Legacy), ele avisa e para antes de mexer no disco.
+  - Foram retirados os ajustes para iniciar discos GPT por BIOS em
+    alguns equipamentos Lenovo, HP, Intel e Acer.
 
 
 O que inclui

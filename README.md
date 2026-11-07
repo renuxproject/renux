@@ -6,13 +6,13 @@ Renux is a general-purpose operating system: easy to maintain, portable, and
 built with Zig alone. It started from FreeBSD 15.1 and keeps FreeBSD's
 development flowing in, while it grows into a system of its own.
 
-> **Status:** Renux 0.1.1 "Aurora" — experimental; amd64 and UEFI only.
+> **Status:** Renux 0.1.2 "Aurora" — experimental; amd64 and UEFI only.
 > The installer offers Auto (UFS) and Auto (ZFS); the kernel modules
 > (including ZFS) are in `/boot/modules`.
 
 ## Download
 
-The current release is [Renux 0.1.1 "Aurora"](https://github.com/renuxproject/renux/releases/tag/v0.1.1):
+The current release is [Renux 0.1.2 "Aurora"](https://github.com/renuxproject/renux/releases/tag/v0.1.2):
 an installer ISO for a DVD, an installer memstick for a USB stick or an
 external disk, and a disk image for amd64, with their SHA256.  It is
 experimental; read the release notes before installing.
@@ -20,8 +20,8 @@ experimental; read the release notes before installing.
 To write the memstick (it erases the target disk):
 
 ```sh
-unxz renux-0.1.1-amd64-memstick.img.xz
-sudo dd if=renux-0.1.1-amd64-memstick.img of=/dev/da0 bs=1m conv=fsync
+unxz renux-0.1.2-amd64-memstick.img.xz
+sudo dd if=renux-0.1.2-amd64-memstick.img of=/dev/da0 bs=1m conv=fsync
 ```
 
 Boot it by UEFI, not by BIOS (CSM, Legacy).
