@@ -42,6 +42,9 @@ system compiler, no make, no shell scripts, no Python, no Perl.
 - Every other program the build runs (yacc, awk, rpcgen, vtfontcvt, bmake,
   config) is either built from the tree by Zig or rewritten in Zig.
 - The build is `build.zig`.  A step that needs a host tool is a bug.
+- This is the goal, and Renux is not there yet: the host tools and
+  libraries the build still uses are listed in the
+  [README](README.md#building), each one a bug to fix.
 
 ### 2. Any host builds Renux
 
@@ -73,7 +76,8 @@ builds Renux with the Zig it ships, so the system can maintain itself.
 
 ### 4. Easy to maintain
 
-A system that one person can understand is a system many people can keep.
+A system whose build one person can understand is a system many people
+can keep.
 
 - One build, in one language.  What the build knows of a machine is
   written in one place (`tools/renux/machine.zig`).
@@ -110,9 +114,14 @@ code and third-party code without changing their licenses.
 
 ### 8. Decentralized
 
-No one owns Renux.  Anyone may mirror it, host it, fork it and build their
-own.  Since the build needs only Zig, building your own Renux is never a
-privilege of whoever holds the infrastructure.
+Renux is a technology, not a product: no one owns it.  Anyone may use it,
+mirror it, host it, fork it and build their own, and a Renux built anywhere
+is as much Renux as the official one.  Since the build needs only Zig,
+building your own Renux is never a privilege of whoever holds the
+infrastructure.
+
+The official project is kept by its maintainers, who decide what goes into
+its tree, guided by this document.
 
 ### 9. Your device, your rules
 
