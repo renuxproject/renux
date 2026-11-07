@@ -113,10 +113,15 @@ pub fn build(b: *Build, opts: Options) Modules {
     // BSD xargs -J and GNU xargs differ; -I is the portable spelling.
     run.addArg("XARGS_J=-I");
     // The host's objcopy and uudecode, wrapped for FreeBSD ELF output and
-    // for uudecode -p (see kgen).
+    // for uudecode -p (see kgen), and the tree's rpcgen, yacc and awk:
+    // some module Makefiles call "rpcgen" (not ${RPCGEN}), and the host's
+    // rpcgen may generate code for another RPC implementation.
     const wrappers: *Build.Step.WriteFile = b.addWriteFiles();
     _ = wrappers.addCopyFile(opts.kgen.getEmittedBin(), "objcopy");
     _ = wrappers.addCopyFile(opts.kgen.getEmittedBin(), "uudecode");
+    _ = wrappers.addCopyFile(opts.hosttools.rpcgen.getEmittedBin(), "rpcgen");
+    _ = wrappers.addCopyFile(opts.hosttools.yacc.getEmittedBin(), "yacc");
+    _ = wrappers.addCopyFile(opts.hosttools.awk.getEmittedBin(), "awk");
     run.addPrefixedDirectoryArg("PATH+=", wrappers.getDirectory());
     run.addArg("OBJCOPY=objcopy");
     // The target compiler and linker.  `zig clang` needs the target here:

@@ -114,7 +114,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           tail -120 modules-build.log >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          msg=$(tail -30 modules-build.log | tr '\n' ' ' | cut -c1-8000)
+          msg=$(grep -iE 'error:|fatal error|Error code' modules-build.log | tail -40 | tr '\n' ' ' | cut -c1-12000 || true)
           echo "::error title=modules build::$msg"
 
       - name: The modules
