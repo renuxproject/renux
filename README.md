@@ -17,6 +17,21 @@ an installer ISO for a DVD, an installer memstick for a USB stick or an
 external disk, and a disk image for amd64, with their SHA256.  It is
 experimental; read the release notes before installing.
 
+Every release is signed.  Check the signature of its `SHA256` with the
+key in [`.github/release/allowed_signers`](.github/release/allowed_signers)
+(fingerprint `SHA256:fhgE+WV4B5Sbt3+nvl0/nAEPMRD3OcOFx+UU4E6vt0Y`), then
+the files against it; `ssh-keygen` comes with OpenSSH, on FreeBSD, Linux
+and macOS:
+
+```sh
+ssh-keygen -Y verify -f allowed_signers -I renux-release \
+  -n renux-release -s SHA256.sig < SHA256
+sha256sum -c SHA256
+```
+
+A copy of a release from anywhere, the project's servers or a mirror, is
+the official release when it passes these checks.
+
 To write the memstick (it erases the target disk):
 
 ```sh

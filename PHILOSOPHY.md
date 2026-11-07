@@ -54,7 +54,8 @@ must not depend on which one it was.
 - The build reads only the tree and writes only its cache and `zig-out`.
 - The same tree and the same Zig give the same bytes.  Reproducibility is
   checked, not hoped for: a kernel built in two different caches must be
-  identical.
+  identical, and the `reproducible` job of the build workflow checks it at
+  every change, with two builds from two directories on two machines.
 - Paths of the host never end up in what the build makes.
 
 ### 3. Renux carries its own compiler
@@ -114,14 +115,25 @@ code and third-party code without changing their licenses.
 
 ### 8. Decentralized
 
-Renux is a technology, not a product: no one owns it.  Anyone may use it,
-mirror it, host it, fork it and build their own, and a Renux built anywhere
-is as much Renux as the official one.  Since the build needs only Zig,
-building your own Renux is never a privilege of whoever holds the
-infrastructure.
+Renux is a technology, not a product: no one owns it, the system or its
+community.  Anyone may use it, contribute to it, mirror it, host it, fork
+it and build their own.  Since the build needs only Zig, building your own
+Renux is never a privilege of whoever holds the infrastructure.
 
-The official project is kept by its maintainers, who decide what goes into
-its tree, guided by this document.
+- **"Official" is a reference, not an authority.**  An official release is
+  the one the project builds, publishes and signs; it gives everyone the
+  same thing to compare against, and no power over anyone.
+- **Trust is checked, not granted.**  Every release is signed: its
+  `SHA256` and `SHA256.sig`, with the key in
+  `.github/release/allowed_signers`.  The build is reproducible (principle
+  2), so a Renux whose bytes match the official release is the official
+  release, wherever it was built or downloaded: a mirror, or a build at
+  someone's home, is worth exactly as much as the project's own servers.
+  Today the CI checks this for the kernel; the whole system is the goal.
+- **A build that does not match is not the official release.**  It may be
+  a fork, and forks are welcome.
+- **The official project is kept by its maintainers**, who decide what
+  goes into its tree, guided by this document.
 
 ### 9. Your device, your rules
 

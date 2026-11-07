@@ -9,8 +9,9 @@
 #
 # Builds the kernel with `zig build kernel`, as on any host: nothing but
 # the Zig the build is written for, checked against its published sha256.
-# The kernel's sha256 is printed: the build is reproducible, so it is the
-# same as on any machine that builds the same commit.
+# The kernel is built twice, on two runners, from two directories and with
+# two caches, and the reproducible job checks that the two are the same
+# bytes: the same as on any machine that builds the same commit.
 
 name: build
 
@@ -70,6 +71,75 @@ jobs:
           name: kernel-${{ github.sha }}
           path: zig-out/boot/kernel/kernel
           retention-days: 14
+
+  # The same commit again, on another runner, from another directory and
+  # with caches of its own, so that no path, cache or machine leaks into
+  # the kernel.  The reproducible job checks the two are the same bytes.
+  kernel-elsewhere:
+    name: kernel, built elsewhere
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: elsewhere/renux-${{ github.run_id }}
+
+      - name: Install Zig ${{ env.ZIG_VERSION }}
+        run: |
+          set -eu
+          tarball="zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+          curl -fsSL -o "$tarball" "https://ziglang.org/download/${ZIG_VERSION}/${tarball}"
+          echo "${ZIG_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/zig"
+          tar -xJf "$tarball" -C "$RUNNER_TEMP/zig" --strip-components=1
+          rm "$tarball"
+          echo "$RUNNER_TEMP/zig" >> "$GITHUB_PATH"
+
+      - name: zig build kernel
+        working-directory: elsewhere/renux-${{ github.run_id }}
+        run: |
+          export ZIG_GLOBAL_CACHE_DIR="$RUNNER_TEMP/another-global-cache"
+          zig build kernel --summary failures --cache-dir "$RUNNER_TEMP/another-cache"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kernel-elsewhere-${{ github.sha }}
+          path: elsewhere/renux-${{ github.run_id }}/zig-out/boot/kernel/kernel
+          retention-days: 14
+
+  # PHILOSOPHY.md: the same tree and the same Zig give the same bytes, and
+  # this is checked, not hoped for.
+  reproducible:
+    name: the kernel is reproducible
+    needs: [kernel, kernel-elsewhere]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: kernel-${{ github.sha }}
+          path: a
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: kernel-elsewhere-${{ github.sha }}
+          path: b
+
+      - name: Compare
+        run: |
+          set -eu
+          sha256sum a/kernel b/kernel | tee -a "$GITHUB_STEP_SUMMARY"
+          if cmp -s a/kernel b/kernel; then
+            echo "The two kernels are the same bytes." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          differing=$(cmp -l a/kernel b/kernel | wc -l || true)
+          echo "::error title=reproducible::the two kernels differ in ${differing} bytes"
+          {
+            echo '```'
+            cmp -l a/kernel b/kernel | head -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
   modules:
     name: all kernel modules

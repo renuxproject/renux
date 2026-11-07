@@ -11,7 +11,9 @@
 # (the world, the kernel and the loader) into a bootable disk, an installer
 # ISO and an installer memstick, as on any host, with the Zig the build is
 # written for.  Pushing a `v*` tag builds them and publishes a GitHub
-# release with the three images and their sha256.
+# release with the three images, their sha256 and its signature.  The
+# signing key is the RENUX_RELEASE_SIGNING_KEY secret; its public half is
+# .github/release/allowed_signers.
 #
 # The release notes are `.github/release/<version>.md`, where <version> is
 # the tag without its leading `v`.
@@ -136,6 +138,29 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           msg=$(cat /tmp/xz-img.err /tmp/xz-iso.err /tmp/xz-memstick.err 2>/dev/null | tail -20 | tr '\n' ' ' | cut -c1-8000)
           echo "::error title=compression::$msg"
+
+      # SHA256.sig: the release's signature, by the key whose public half
+      # is .github/release/allowed_signers.  ssh-keygen is everywhere
+      # OpenSSH is, so anyone checks it without the project's servers.
+      # A release is never published unsigned, and the signature is
+      # checked against the published key before it leaves the runner.
+      - name: Sign
+        env:
+          RENUX_RELEASE_SIGNING_KEY: ${{ secrets.RENUX_RELEASE_SIGNING_KEY }}
+        run: |
+          set -eu
+          if [ -z "${RENUX_RELEASE_SIGNING_KEY:-}" ]; then
+            echo "::error title=sign::the RENUX_RELEASE_SIGNING_KEY secret is not set"
+            exit 1
+          fi
+          key="$RUNNER_TEMP/renux-release"
+          umask 077
+          printf '%s\n' "$RENUX_RELEASE_SIGNING_KEY" > "$key"
+          ssh-keygen -q -Y sign -f "$key" -n renux-release dist/SHA256 < /dev/null
+          rm -f "$key"
+          ssh-keygen -Y verify -f .github/release/allowed_signers \
+            -I renux-release -n renux-release -s dist/SHA256.sig < dist/SHA256 \
+            | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:

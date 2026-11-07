@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# The key that signs Renux's releases, for ssh-keygen -Y verify.  Every
+# release has a SHA256 file and its signature, SHA256.sig:
+#
+#   ssh-keygen -Y verify -f allowed_signers -I renux-release \
+#     -n renux-release -s SHA256.sig < SHA256
+#   sha256sum -c SHA256
+#
+# Key fingerprint: SHA256:fhgE+WV4B5Sbt3+nvl0/nAEPMRD3OcOFx+UU4E6vt0Y
+renux-release namespaces="renux-release" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOoNR37F1kftzlNyqANlFX3H1TT8jSIPUOSUg1wvV3Np
