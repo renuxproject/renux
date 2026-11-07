@@ -116,19 +116,30 @@ jobs:
         env:
           NAME: ${{ steps.meta.outputs.name }}
         run: |
-          set -eu
-          mkdir release
-          xz -T0 -6 -c "zig-out/renux-${MACHINE}.img" > "release/${NAME}.img.xz"
-          xz -T0 -6 -c "zig-out/renux-${MACHINE}-installer.iso" > "release/${NAME}-installer.iso.xz"
-          cd release
+          set -euxo pipefail
+          mkdir -p dist
+          xz -T0 -6 -c "zig-out/renux-${MACHINE}.img" > "dist/${NAME}.img.xz" 2> /tmp/xz-img.err
+          xz -T0 -6 -c "zig-out/renux-${MACHINE}-installer.iso" > "dist/${NAME}-installer.iso.xz" 2> /tmp/xz-iso.err
+          cd dist
           sha256sum *.xz > SHA256
           cat SHA256 | tee -a "$GITHUB_STEP_SUMMARY"
           ls -l
 
+      - name: The compression failure
+        if: failure()
+        run: |
+          set +e
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/xz-img.err /tmp/xz-iso.err 2>/dev/null >> "$GITHUB_STEP_SUMMARY"
+          df -h . >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          msg=$(cat /tmp/xz-img.err /tmp/xz-iso.err 2>/dev/null | tail -20 | tr '\n' ' ' | cut -c1-8000)
+          echo "::error title=compression::$msg"
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.name }}
-          path: release/
+          path: dist/
           retention-days: 30
           compression-level: 0
 
@@ -145,7 +156,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ${{ needs.image.outputs.name }}
-          path: release
+          path: dist
 
       - name: The release's notes
         env:
@@ -177,10 +188,10 @@ jobs:
             title="Renux ${VERSION} (${CODENAME})"
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" release/* --clobber
+            gh release upload "$TAG" dist/* --clobber
             gh release edit "$TAG" --title "$title" --notes-file notes.md
           else
-            gh release create "$TAG" release/* \
+            gh release create "$TAG" dist/* \
               --repo "$GITHUB_REPOSITORY" \
               --title "$title" \
               --notes-file notes.md
