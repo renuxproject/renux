@@ -76,7 +76,7 @@ const renux_codename: []const u8 = "Aurora";
 const zig_series: SemanticVersion = .{
     .major = 0,
     .minor = 17,
-    .patch = 0,
+    .patch = 1,
 };
 
 comptime {

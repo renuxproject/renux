@@ -6,13 +6,13 @@ Renux is a general-purpose operating system: easy to maintain, portable, and
 built with Zig alone. It started from FreeBSD 15.1 and keeps FreeBSD's
 development flowing in, while it grows into a system of its own.
 
-> **Status:** Renux 0.1 "Aurora" — experimental; amd64 and UEFI only.
+> **Status:** Renux 0.1.1 "Aurora" — experimental; amd64 and UEFI only.
 > The installer offers Auto (UFS) and Auto (ZFS); the kernel modules
 > (including ZFS) are in `/boot/modules`.
 
 ## Download
 
-The current release is [Renux 0.1 "Aurora"](https://github.com/renuxproject/renux/releases/tag/v0.1.0):
+The current release is [Renux 0.1.1 "Aurora"](https://github.com/renuxproject/renux/releases/tag/v0.1.1):
 an installer ISO and a disk image for amd64, with their SHA256.  It is
 experimental; read the release notes before installing.
 

@@ -14,13 +14,13 @@
 // lazy: only the media (zig build image, iso) fetch them.
 .{
     .name = .renux,
-    .version = "0.1.0",
+    .version = "0.1.1",
     .fingerprint = 0x717d1145ada540a,
-    .minimum_zig_version = "0.17.0",
+    .minimum_zig_version = "0.17.1",
     .dependencies = .{
         .zig_x86_64_freebsd = .{
-            .url = "https://ziglang.org/download/0.17.0/zig-x86_64-freebsd-0.17.0.tar.xz",
-            .hash = "N-V-__8AAECkUBY-WzykR_SsykSjUM4qxLr1QRitEKkOhUK5",
+            .url = "https://ziglang.org/download/0.17.1/zig-x86_64-freebsd-0.17.1.tar.xz",
+            .hash = "N-V-__8AAC1LVBa3jUktVXXicmFIl7wHm-4oe4LzXhgVI4WG",
             .lazy = true,
         },
     },

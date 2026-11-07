@@ -26,7 +26,7 @@ msg_menu_live="Usar o sistema ao vivo"
 msg_menu_shell="Abrir um shell"
 msg_menu_reboot="Reiniciar"
 msg_menu_poweroff="Desligar"
-msg_about_text="Renux 0.1 Aurora (experimental)\n\nUm sistema operacional de uso geral, fácil de manter e portátil:\ninstale o Zig e compile o sistema inteiro.\n\nBaseado no FreeBSD 15.1, compilado com Zig 0.17.\nCriado por Renan Lucas Vieira Hilário e The Renux Project.\nO trabalho do Renux está sob a Mozilla Public License 2.0;\no código do FreeBSD, sob as licenças BSD.\n\nhttps://renuxproject.github.io/\nhttps://github.com/renuxproject/renux"
+msg_about_text="Renux 0.1.1 Aurora (experimental)\n\nUm sistema operacional de uso geral, fácil de manter e portátil:\ninstale o Zig e compile o sistema inteiro.\n\nBaseado no FreeBSD 15.1, compilado com Zig 0.17.1.\nCriado por Renan Lucas Vieira Hilário e The Renux Project.\nO trabalho do Renux está sob a Mozilla Public License 2.0;\no código do FreeBSD, sob as licenças BSD.\n\nhttps://renuxproject.github.io/\nhttps://github.com/renuxproject/renux"
 
 msg_btn_ok="OK"
 msg_btn_cancel="Cancelar"

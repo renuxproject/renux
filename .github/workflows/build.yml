@@ -31,8 +31,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  ZIG_VERSION: "0.17.0"
-  ZIG_SHA256: "1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026"
+  ZIG_VERSION: "0.17.1"
+  ZIG_SHA256: "3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a"
 
 jobs:
   kernel:

@@ -1,10 +1,10 @@
-Renux 0.1 "Aurora" - Notas de la versión
+Renux 0.1.1 "Aurora" - Notas de la versión
 
 Renux es un sistema operativo de uso general, fácil de mantener y
 portable, compilado solo con Zig: instale Zig y compile el sistema
 entero.
 
-Esta es la primera versión de Renux, la 0.1 "Aurora".  Es experimental:
+Esta es la primera versión de Renux, la 0.1.1 "Aurora".  Es experimental:
 no la instale en un equipo con datos importantes.
 
 
@@ -12,7 +12,7 @@ Qué incluye
 
   - El kernel, el cargador EFI y todos los programas del sistema se
     compilan con `zig build` desde el código fuente de Renux, con
-    Zig 0.17 como compilador.
+    Zig 0.17.1 como compilador.
   - Renux se basa en FreeBSD 15.1 y sigue su desarrollo.
   - Los módulos del kernel se compilan e instalan en /boot/modules
     (854 en amd64), incluidos ZFS y los controladores que FreeBSD
@@ -40,7 +40,7 @@ Limitaciones conocidas
     ZFS configura el pool, los datasets y el cifrado opcional.
   - En español y portugués, los nombres de los teclados y de la
     mayoría de las zonas horarias siguen en inglés.
-  - El compilador del sistema, Zig 0.17 (con cc, c++, ld, ar y ranlib,
+  - El compilador del sistema, Zig 0.17.1 (con cc, c++, ld, ar y ranlib,
     que lo ejecutan), es la versión de ziglang.org para FreeBSD; aún no
     se compila desde el código fuente de Renux.
 
