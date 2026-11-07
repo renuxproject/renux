@@ -6,8 +6,15 @@ Renux is a general-purpose operating system: easy to maintain, portable, and
 built with Zig alone. It started from FreeBSD 15.1 and keeps FreeBSD's
 development flowing in, while it grows into a system of its own.
 
-> **Status:** in development, toward Renux 0.1 "Aurora". Experimental; amd64 only. The Zig build is being
-> written.
+> **Status:** Renux 0.1 "Aurora" — experimental; amd64 and UEFI only.
+> The Zig build builds the whole system; a few host tools still come from
+> the host.
+
+## Download
+
+The current release is [Renux 0.1 "Aurora"](https://github.com/renuxproject/renux/releases/tag/v0.1.0):
+an installer ISO and a disk image for amd64, with their SHA256.  It is
+experimental; read the release notes before installing.
 
 ## Why Renux
 
@@ -45,8 +52,9 @@ host's commands (`sh`, `cp`, `find`, `gzip`, `xz`...), as FreeBSD's
 `tools/build` lists them, and its host tools link against three of the
 host's libraries (libarchive, OpenSSL, zlib); `zig build iso` uses the
 host's bsdtar for the distribution sets.  Building those from the tree
-too is the next step.  `zig build run` needs QEMU and its UEFI firmware.  A snapshot is
-made by the `snapshot` workflow on GitHub.
+too is the next step.  `zig build run` needs QEMU and its UEFI firmware.
+Nightly snapshots are made by the `snapshot` workflow on GitHub; a release
+is made by the `release` workflow when a `v*` tag is pushed.
 
 | Option | Effect |
 | ------ | ------ |

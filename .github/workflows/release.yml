@@ -1,0 +1,174 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# A Renux release: `zig build image iso` makes the whole system (the
+# world, the kernel and the loader) into a bootable disk and an installer
+# ISO, as on any host, with the Zig the build is written for.  Pushing a
+# `v*` tag builds them and publishes a GitHub release with the two images
+# and their sha256.
+#
+# The release notes are `.github/release/<version>.md`, where <version> is
+# the tag without its leading `v`.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (for example, v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  ZIG_VERSION: "0.17.0"
+  ZIG_SHA256: "1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026"
+  MACHINE: amd64
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      name: ${{ steps.meta.outputs.name }}
+      sha: ${{ steps.meta.outputs.sha }}
+      codename: ${{ steps.meta.outputs.codename }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: The release's version
+        id: meta
+        run: |
+          set -eu
+          tag="${{ inputs.tag || github.ref_name }}"
+          version="${tag#v}"
+          codename=$(sed -n 's/^const renux_codename: \[\]const u8 = "\(.*\)";$/\1/p' build.zig)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "name=renux-${version}-${MACHINE}" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "codename=$codename" >> "$GITHUB_OUTPUT"
+
+      - name: Install Zig ${{ env.ZIG_VERSION }}
+        run: |
+          set -eu
+          tarball="zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+          curl -fsSL -o "$tarball" "https://ziglang.org/download/${ZIG_VERSION}/${tarball}"
+          echo "${ZIG_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/zig"
+          tar -xJf "$tarball" -C "$RUNNER_TEMP/zig" --strip-components=1
+          rm "$tarball"
+          echo "$RUNNER_TEMP/zig" >> "$GITHUB_PATH"
+
+      # What the world takes from the host besides Zig, as in the snapshot
+      # workflow: FreeBSD's tools/build commands, the C library and Linux
+      # headers the host tools compile with, the three libraries they link
+      # against, and bsdtar for the installer's distribution sets.
+      - name: Host dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            bash coreutils findutils diffutils sed grep gzip bzip2 xz-utils patch debianutils \
+            libc6-dev linux-libc-dev \
+            libarchive-dev libssl-dev zlib1g-dev \
+            libarchive-tools
+
+      # The world's objects take several GB: make room on the runner.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h .
+
+      - name: zig build image iso
+        run: zig build image iso -Dmachine="$MACHINE" --summary failures
+
+      - name: Compress
+        env:
+          NAME: ${{ steps.meta.outputs.name }}
+        run: |
+          set -eu
+          mkdir release
+          xz -T0 -6 -c "zig-out/renux-${MACHINE}.img" > "release/${NAME}.img.xz"
+          xz -T0 -6 -c "zig-out/renux-${MACHINE}-installer.iso" > "release/${NAME}-installer.iso.xz"
+          cd release
+          sha256sum *.xz > SHA256
+          cat SHA256 | tee -a "$GITHUB_STEP_SUMMARY"
+          ls -l
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.name }}
+          path: release/
+          retention-days: 30
+          compression-level: 0
+
+  publish:
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.image.outputs.name }}
+          path: release
+
+      - name: The release's notes
+        env:
+          VERSION: ${{ needs.image.outputs.version }}
+          NAME: ${{ needs.image.outputs.name }}
+          SHA: ${{ needs.image.outputs.sha }}
+        run: |
+          set -eu
+          short=$(printf '%s' "$SHA" | cut -c1-10)
+          sed "s/@NAME@/${NAME}/g" ".github/release/${VERSION}.md" > body.md
+          {
+            echo "![Renux ${VERSION}](https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${SHA}/.github/release/banner.png)"
+            echo
+            echo "Built on $(date -u +%Y-%m-%d) from [\`$short\`](https://github.com/${GITHUB_REPOSITORY}/commit/${SHA})."
+            echo
+            cat body.md
+          } > notes.md
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          VERSION: ${{ needs.image.outputs.version }}
+          CODENAME: ${{ needs.image.outputs.codename }}
+        run: |
+          set -eu
+          title="Renux ${VERSION}"
+          if [ -n "${CODENAME:-}" ]; then
+            title="Renux ${VERSION} (${CODENAME})"
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release/* --clobber
+            gh release edit "$TAG" --title "$title" --notes-file notes.md
+          else
+            gh release create "$TAG" release/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$title" \
+              --notes-file notes.md
+          fi

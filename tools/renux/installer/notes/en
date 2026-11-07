@@ -1,10 +1,10 @@
-Renux in development - Release Notes
+Renux 0.1 "Aurora" - Release Notes
 
 Renux is a general-purpose operating system, easy to maintain and
 portable, built with Zig alone: install Zig, build the whole system.
 
-This is the first snapshot of Renux.  It is experimental: do not
-install it on a machine that holds data you need.
+This is the first release of Renux, 0.1 "Aurora".  It is experimental:
+do not install it on a machine that holds data you need.
 
 
 What is in it

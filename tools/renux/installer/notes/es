@@ -1,11 +1,11 @@
-Renux en desarrollo - Notas de la versión
+Renux 0.1 "Aurora" - Notas de la versión
 
 Renux es un sistema operativo de uso general, fácil de mantener y
 portable, compilado solo con Zig: instale Zig y compile el sistema
 entero.
 
-Esta es la primera versión de prueba (snapshot) de Renux.  Es
-experimental: no la instale en un equipo con datos importantes.
+Esta es la primera versión de Renux, la 0.1 "Aurora".  Es experimental:
+no la instale en un equipo con datos importantes.
 
 
 Qué incluye
