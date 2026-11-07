@@ -25,7 +25,7 @@ msg_menu_live="Usar el sistema en vivo"
 msg_menu_shell="Abrir una shell"
 msg_menu_reboot="Reiniciar"
 msg_menu_poweroff="Apagar"
-msg_about_text="Renux 0.1.1 Aurora (experimental)\n\nUn sistema operativo de uso general, fácil de mantener y portable:\ninstale Zig y compile el sistema entero.\n\nBasado en FreeBSD 15.1, compilado con Zig 0.17.1.\nCreado por Renan Lucas Vieira Hilário y The Renux Project.\nEl trabajo de Renux está bajo la Mozilla Public License 2.0;\nel código de FreeBSD, bajo las licencias BSD.\n\nhttps://renuxproject.github.io/\nhttps://github.com/renuxproject/renux"
+msg_about_text="Renux 0.1.2 Aurora (experimental)\n\nUn sistema operativo de uso general, fácil de mantener y portable:\ninstale Zig y compile el sistema entero.\n\nBasado en FreeBSD 15.1, compilado con Zig 0.17.1.\nCreado por Renan Lucas Vieira Hilário y The Renux Project.\nEl trabajo de Renux está bajo la Mozilla Public License 2.0;\nel código de FreeBSD, bajo las licencias BSD.\n\nhttps://renuxproject.github.io/\nhttps://github.com/renuxproject/renux"
 
 msg_btn_ok="OK"
 msg_btn_cancel="Cancelar"
@@ -96,6 +96,9 @@ renux_tr()
 		t="Error" ;;
 	"Warning")
 		t="Aviso" ;;
+	# auto: Renux boots by UEFI only
+	"Renux boots by UEFI only, and this computer started the installer by BIOS (legacy). Restart it and choose the installer's UEFI entry in the firmware's boot menu. The disk was not changed.")
+		t="Renux arranca solo por UEFI, y este equipo inició el instalador por BIOS (heredado). Reinícielo y elija la entrada UEFI del instalador en el menú de arranque del firmware. El disco no se modificó." ;;
 	"Partitioning")
 		t="Particionado" ;;
 	"How would you like to partition your disk?")

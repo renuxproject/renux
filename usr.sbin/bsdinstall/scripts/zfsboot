@@ -25,6 +25,12 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
+# Copyright (c) 2026 Renan Lucas Vieira Hilário
+# Copyright (c) 2026 The Renux Project
+#
+# Renux's changes to this file are under the Mozilla Public License,
+# v. 2.0: https://mozilla.org/MPL/2.0/.
+#
 #
 ############################################################ INCLUDES
 
@@ -1536,16 +1542,10 @@ arm64|riscv)
 	: ${ZFSBOOT_PARTITION_SCHEME:=GPT}
 	;;
 *)
-	# If the system was booted with UEFI, set the default boot type to UEFI
-	bootmethod=$( sysctl -n machdep.bootmethod )
-	f_dprintf "machdep.bootmethod=[%s]" "$bootmethod"
-	if [ "$bootmethod" = "UEFI" ]; then
-		: ${ZFSBOOT_BOOT_TYPE:=BIOS+UEFI}
-		: ${ZFSBOOT_PARTITION_SCHEME:=GPT}
-	else
-		: ${ZFSBOOT_BOOT_TYPE:=BIOS}
-		: ${ZFSBOOT_PARTITION_SCHEME:=GPT}
-	fi
+	# Renux boots by UEFI only: its build makes only the EFI loader
+	# (loader.efi), and no BIOS boot code (/boot/pmbr, /boot/gptzfsboot).
+	ZFSBOOT_BOOT_TYPE=UEFI
+	ZFSBOOT_PARTITION_SCHEME=GPT
 	;;
 esac
 
@@ -1675,27 +1675,10 @@ while :; do
 		fi
 		;;
 	?" $msg_partition_scheme")
-		# Toggle between partition schemes
-		if [ "$ZFSBOOT_PARTITION_SCHEME" = "GPT" -a \
-		     "$ZFSBOOT_BOOT_TYPE" = "BIOS" ]
-		then
-			ZFSBOOT_PARTITION_SCHEME="GPT"
-			ZFSBOOT_BOOT_TYPE="UEFI"
-		elif [ "$ZFSBOOT_PARTITION_SCHEME" = "GPT" -a \
-		       "$ZFSBOOT_BOOT_TYPE" = "UEFI" ]
-		then
-			ZFSBOOT_PARTITION_SCHEME="GPT"
-			ZFSBOOT_BOOT_TYPE="BIOS+UEFI"
-		elif [ "$ZFSBOOT_PARTITION_SCHEME" = "GPT" ]; then
-			ZFSBOOT_PARTITION_SCHEME="GPT + Active"
-			ZFSBOOT_BOOT_TYPE="BIOS"
-		elif [ "$ZFSBOOT_PARTITION_SCHEME" = "GPT + Active" ]; then
-			ZFSBOOT_PARTITION_SCHEME="GPT + Lenovo Fix"
-			ZFSBOOT_BOOT_TYPE="BIOS"
-		else
-			ZFSBOOT_PARTITION_SCHEME="GPT"
-			ZFSBOOT_BOOT_TYPE="BIOS"
-		fi
+		# Renux: GPT (UEFI) is the only scheme; Renux does not boot
+		# by BIOS.
+		ZFSBOOT_PARTITION_SCHEME="GPT"
+		ZFSBOOT_BOOT_TYPE="UEFI"
 		;;
 	?" $msg_swap_size")
 		# Prompt the user to input/change the swap size for each disk

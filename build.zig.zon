@@ -14,7 +14,7 @@
 // lazy: only the media (zig build image, iso) fetch them.
 .{
     .name = .renux,
-    .version = "0.1.1",
+    .version = "0.1.2",
     .fingerprint = 0x717d1145ada540a,
     .minimum_zig_version = "0.17.1",
     .dependencies = .{
