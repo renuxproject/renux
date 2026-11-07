@@ -18,9 +18,10 @@
 // any comma-separated list, passes MODULES_OVERRIDE, which is how FreeBSD
 // itself builds a subset.
 //
-// The modules are compiled, not installed: the .ko files stay in the
-// object directory (.zig-cache/modules/obj/.../sys/modules/<name>/).
-// Wiring them into the image comes next.
+// The build collects the selected .ko files in a generated directory,
+// installs them in zig-out/boot/modules, and hands that directory to the
+// image: the disk, the installer's kernel.txz and the live ISO all carry
+// /boot/modules.
 
 const std: type = @import("std");
 const mem: type = std.mem;
@@ -45,6 +46,15 @@ pub const Options: type = struct {
     selection: []const u8,
 };
 
+pub const Modules: type = struct {
+    /// bmake -C sys/modules all.
+    compile: *Build.Step,
+    /// The same modules installed in zig-out/boot/modules.
+    install: *Build.Step,
+    /// The flat directory of .ko files the image reads.
+    dir: LazyPath,
+};
+
 /// The absolute path of the source tree.  `joinString` keeps the path the
 /// build was given: it does not call realpath(2), which not every host (or
 /// Linux compatibility layer) implements for a directory handle.
@@ -53,25 +63,35 @@ fn treeDir(b: *Build) []const u8 {
     return b.root.joinString(b.allocator, "") catch @panic("OOM");
 }
 
-/// "zfs,if_bridge" -> "zfs if_bridge"; "all" -> "" (no override).
-fn moduleList(b: *Build, selection: []const u8) []const u8 {
-    if (mem.eql(u8, selection, "all")) return "";
-    var parts: std.ArrayList([]const u8) = .empty;
-    var it: mem.SplitIterator(u8, .scalar) = mem.splitScalar(u8, selection, ',');
+const Selection: type = struct {
+    /// MODULES_OVERRIDE, or "" for all.
+    override: []const u8,
+    /// The module directory names of the selection; empty for all.
+    names: []const []const u8,
+};
+
+/// "zfs,if_bridge" -> { "zfs if_bridge", { "zfs", "if_bridge" } };
+/// "all" -> { "", {} } (no override, every module).
+fn selection(b: *Build, choice: []const u8) Selection {
+    if (mem.eql(u8, choice, "all")) return .{ .override = "", .names = &.{} };
+    var names: std.ArrayList([]const u8) = .empty;
+    var it: mem.SplitIterator(u8, .scalar) = mem.splitScalar(u8, choice, ',');
     while (it.next()) |part| {
         const name: []const u8 = mem.trim(u8, part, " \t");
-        if (name.len > 0) parts.append(b.allocator, name) catch @panic("OOM");
+        if (name.len > 0) names.append(b.allocator, name) catch @panic("OOM");
     }
-    return mem.join(b.allocator, " ", parts.items) catch @panic("OOM");
+    const items: []const []const u8 = names.items;
+    return .{ .override = mem.join(b.allocator, " ", items) catch @panic("OOM"), .names = items };
 }
 
 /// The `modules` step: bmake -C sys/modules all, with KERNBUILDDIR set
 /// to the kernel's generated headers and MODULES_OVERRIDE to the
-/// selected modules.
-pub fn build(b: *Build, opts: Options) *Build.Step {
+/// selected modules, then the .ko files collected and installed.
+pub fn build(b: *Build, opts: Options) Modules {
     const tree: []const u8 = treeDir(b);
     const obj: []const u8 = b.fmt("{s}/.zig-cache/modules/obj", .{tree});
     const zig_lib: []const u8 = b.fmt("{s}/lib", .{std.fs.path.dirname(b.graph.zig_exe) orelse "."});
+    const sel: Selection = selection(b, opts.selection);
 
     const run: *Build.Step.Run = b.addRunArtifact(opts.kgen);
     run.addArg("env");
@@ -92,9 +112,11 @@ pub fn build(b: *Build, opts: Options) *Build.Step {
     run.addArg("NO_XREF=yes");
     // BSD xargs -J and GNU xargs differ; -I is the portable spelling.
     run.addArg("XARGS_J=-I");
-    // GNU objcopy has no elf64-x86-64-freebsd target (the linux module's
-    // 32-bit vDSO needs it), and it cannot write the FreeBSD OSABI.
-    run.addArg("OBJCOPY=llvm-objcopy");
+    // The host's objcopy, wrapped to write FreeBSD ELF output (see kgen).
+    const objcopy: *Build.Step.WriteFile = b.addWriteFiles();
+    _ = objcopy.addCopyFile(opts.kgen.getEmittedBin(), "objcopy");
+    run.addPrefixedDirectoryArg("PATH+=", objcopy.getDirectory());
+    run.addArg("OBJCOPY=objcopy");
     // The target compiler and linker.  `zig clang` needs the target here:
     // the host is not the machine the modules run on.
     run.addArg(b.fmt("CC={s} clang -target {s} -resource-dir={s}", .{ b.graph.zig_exe, opts.triple, zig_lib }));
@@ -113,11 +135,24 @@ pub fn build(b: *Build, opts: Options) *Build.Step {
     run.addArg(b.fmt("{s}/sys/modules", .{tree}));
     const jobs: usize = Thread.getCpuCount() catch 1;
     run.addArgs(&.{ "-j", b.fmt("{d}", .{jobs}) });
-    const list: []const u8 = moduleList(b, opts.selection);
-    if (list.len > 0) run.addArg(b.fmt("MODULES_OVERRIDE={s}", .{list}));
+    if (sel.override.len > 0) run.addArg(b.fmt("MODULES_OVERRIDE={s}", .{sel.override}));
     run.addArg("all");
     // bmake keeps its own object directories: the Zig build always asks
     // it, as it does for the world.
     run.has_side_effects = true;
-    return &run.step;
+
+    // The flat set of .ko files: the image reads it, and the install step
+    // copies it to zig-out/boot/modules.
+    const copy: *Build.Step.Run = b.addRunArtifact(opts.kgen);
+    copy.addArg("copy-modules");
+    copy.addArg(obj);
+    const dir: LazyPath = copy.addOutputDirectoryArg("modules");
+    for (sel.names) |name| copy.addArg(name);
+    copy.step.dependOn(&run.step);
+    const install: *Build.Step.InstallDir = b.addInstallDirectory(.{
+        .source_dir = dir,
+        .install_dir = .prefix,
+        .install_subdir = "boot/modules",
+    });
+    return .{ .compile = &run.step, .install = &install.step, .dir = dir };
 }

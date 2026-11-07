@@ -37,7 +37,7 @@ zig build hosttools    # yacc, awk, rpcgen and vtfontcvt, built from this tree
 zig build kernel       # the kernel, in zig-out/boot/kernel
 zig build loader       # the EFI loader and its Lua scripts, in zig-out/boot
 zig build world        # the userland, installed without root in .zig-cache/world
-zig build modules      # kernel modules, in .zig-cache/modules (default: zfs)
+zig build modules      # kernel modules, in zig-out/boot/modules (default: zfs)
 zig build image        # a bootable disk, zig-out/renux-amd64.img
 zig build iso          # the installer, zig-out/renux-amd64-installer.iso
 zig build run          # that disk in QEMU, with UEFI firmware
@@ -61,9 +61,10 @@ Kernel modules are FreeBSD's `sys/modules` Makefiles, run by the bmake Zig
 builds from the tree against the kernel's generated headers.  The default
 is `-Dmodules=zfs`; a comma-separated list builds those modules
 (`-Dmodules=zfs,accf_http`), and `-Dmodules=all` builds every one.  The
-module build needs `llvm-objcopy` (GNU objcopy has no FreeBSD target).
-The `.ko` files stay in `.zig-cache/modules/obj`; the image does not
-include them yet.
+build wraps the host's `objcopy` to write FreeBSD ELF output.  The selected
+modules are installed in `zig-out/boot/modules`; the disk image, the
+installer's kernel set and the live ISO carry them in `/boot/modules`.
+The official media pass `-Dmodules=all`.
 
 | Option | Effect |
 | ------ | ------ |

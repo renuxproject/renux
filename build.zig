@@ -203,8 +203,8 @@ pub fn build(b: *Build) void {
 
     // The kernel modules, built by FreeBSD's sys/modules Makefiles against
     // the kernel configuration above.
-    const modules_step: *Build.Step = b.step("modules", "Build the kernel modules into .zig-cache/modules (default: zfs; -Dmodules=all)");
-    modules_step.dependOn(kmods.build(b, .{
+    const modules_step: *Build.Step = b.step("modules", "Build and install the kernel modules into zig-out/boot/modules (default: zfs; -Dmodules=all)");
+    const m: kmods.Modules = kmods.build(b, .{
         .machine = machine,
         .triple = config.triple(b, shellVar(newvers, "REVISION")),
         .tools = w.tools,
@@ -212,7 +212,8 @@ pub fn build(b: *Build) void {
         .kgen = kgen,
         .include = k.include,
         .selection = modules_opt,
-    }));
+    });
+    modules_step.dependOn(m.install);
     const image_exe: *Build.Step.Compile = b.addExecutable(.{
         .name = "image",
         .root_module = b.createModule(.{
@@ -225,11 +226,11 @@ pub fn build(b: *Build) void {
     // not fetched yet, lazyDependency is null, and the build configures again
     // once Zig has fetched it: the path of this first pass is never used.
     const zig_dir: Build.LazyPath = if (b.lazyDependency(config.zig, .{})) |dep| dep.path(".") else b.path("tools");
-    const image: Build.LazyPath = medium(b, image_exe, "disk", "renux.img", w, k, l, machine, config, zig_dir, .{ .string = w.mkimg }, null);
+    const image: Build.LazyPath = medium(b, image_exe, "disk", "renux.img", w, k, l, m, machine, config, zig_dir, .{ .string = w.mkimg }, null);
     const install_image: *Build.Step.InstallFile = b.addInstallFile(image, b.fmt("renux-{s}.img", .{machine.name()}));
     const image_step: *Build.Step = b.step("image", "Make a bootable disk in zig-out/renux-<machine>.img");
     image_step.dependOn(&install_image.step);
-    const iso: Build.LazyPath = medium(b, image_exe, "iso", "renux.iso", w, k, l, machine, config, zig_dir, .{ .file = b.path("release/rc.local") }, b.path("tools/renux/installer"));
+    const iso: Build.LazyPath = medium(b, image_exe, "iso", "renux.iso", w, k, l, m, machine, config, zig_dir, .{ .file = b.path("release/rc.local") }, b.path("tools/renux/installer"));
     const install_iso: *Build.Step.InstallFile = b.addInstallFile(iso, b.fmt("renux-{s}-installer.iso", .{machine.name()}));
     const iso_step: *Build.Step = b.step("iso", "Make the installer ISO in zig-out/renux-<machine>-installer.iso");
     iso_step.dependOn(&install_iso.step);
@@ -278,6 +279,7 @@ fn medium(
     w: world.World,
     k: kernel.Kernel,
     l: stand.Loader,
+    modules: kmods.Modules,
     machine: Machine,
     config: machine_mod.Config,
     /// The Zig the new system carries.
@@ -298,6 +300,7 @@ fn medium(
     run.addFileArg(b.path(b.fmt("sys/{s}/conf/GENERIC.hints", .{machine.name()})));
     run.addArg(config.efi_boot);
     run.addDirectoryArg(zig);
+    run.addDirectoryArg(modules.dir);
     switch (last) {
         .string => |str| run.addArg(str),
         .file => |file| run.addFileArg(file),

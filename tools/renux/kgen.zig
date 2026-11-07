@@ -746,15 +746,99 @@ fn runIn(dir: []const u8, argv: []const [:0]const u8) void {
     }
 }
 
+// --- objcopy ---------------------------------------------------------------
+//
+// Some hosts' objcopy (GNU, and some LLVM builds) do not know the FreeBSD
+// target `elf64-x86-64-freebsd`, which sys/modules/linux needs for its
+// 32-bit vDSO.  Map it to the generic target, and set e_ident[EI_OSABI] to
+// ELFOSABI_FREEBSD in the output.  Everything else passes through.
+
+const ELFOSABI_FREEBSD: u8 = 9;
+
+fn objcopy(args: []const [:0]const u8) void {
+    var argv: std.ArrayList([]const u8) = .empty;
+    // The real objcopy, not this wrapper: it may be first in PATH.
+    argv.append(gpa, "/usr/bin/objcopy") catch @panic("OOM");
+    var patch: bool = false;
+    var i: usize = 0;
+    while (i < args.len) : (i += 1) {
+        const a: []const u8 = args[i];
+        if (mem.eql(u8, a, "--output-target") and i + 1 < args.len and
+            mem.eql(u8, args[i + 1], "elf64-x86-64-freebsd"))
+        {
+            argv.append(gpa, "--output-target") catch @panic("OOM");
+            argv.append(gpa, "elf64-x86-64") catch @panic("OOM");
+            patch = true;
+            i += 1;
+        } else if (mem.eql(u8, a, "--output-target=elf64-x86-64-freebsd")) {
+            argv.append(gpa, "--output-target=elf64-x86-64") catch @panic("OOM");
+            patch = true;
+        } else {
+            argv.append(gpa, a) catch @panic("OOM");
+        }
+    }
+    const r: process.RunResult = process.run(gpa, io, .{ .argv = argv.items }) catch |err|
+        fatal("objcopy: {t}", .{err});
+    if (r.stderr.len > 0) debug.print("{s}", .{r.stderr});
+    switch (r.term) {
+        .exited => |code| if (code != 0) fatal("objcopy exited with {d}", .{code}),
+        else => fatal("objcopy failed", .{}),
+    }
+    if (patch) {
+        const out: []const u8 = args[args.len - 1];
+        const data: []u8 = readFile(out);
+        if (data.len > 7) data[7] = ELFOSABI_FREEBSD;
+        writeFile(out, data);
+    }
+}
+
+// --- The kernel modules ----------------------------------------------------
+//
+// Copy the .ko files of objdir to outdir, keeping only the selected module
+// directories (no names: every module).  The module build's object tree has
+// one directory per module; the image and install steps want the flat set.
+
+fn selectedModule(path: []const u8, modules: []const [:0]const u8) bool {
+    if (modules.len == 0) return true;
+    for (modules) |name| {
+        const pattern: []const u8 = fmt.allocPrint(gpa, "/sys/modules/{s}/", .{name}) catch @panic("OOM");
+        if (mem.indexOf(u8, path, pattern) != null) return true;
+    }
+    return false;
+}
+
+fn copyModules(objdir: []const u8, outdir: []const u8, modules: []const [:0]const u8) void {
+    Io.Dir.cwd().deleteTree(io, outdir) catch |err| fatal("{s}: {t}", .{ outdir, err });
+    Io.Dir.cwd().createDirPath(io, outdir) catch |err| fatal("{s}: {t}", .{ outdir, err });
+    var dir: Io.Dir = Io.Dir.cwd().openDir(io, objdir, .{ .iterate = true }) catch |err|
+        fatal("{s}: {t}", .{ objdir, err });
+    defer dir.close(io);
+    var walker: Io.Dir.Walker = dir.walk(gpa) catch @panic("OOM");
+    defer walker.deinit();
+    while (walker.next(io) catch |err| fatal("{s}: {t}", .{ objdir, err })) |e| {
+        if (e.kind != .file) continue;
+        const name: []const u8 = fs.path.basename(e.path);
+        if (!mem.endsWith(u8, name, ".ko")) continue;
+        if (!selectedModule(e.path, modules)) continue;
+        const source: []const u8 = fs.path.join(gpa, &.{ objdir, e.path }) catch @panic("OOM");
+        const out: []const u8 = fs.path.join(gpa, &.{ outdir, name }) catch @panic("OOM");
+        writeFile(out, readFile(source));
+    }
+}
+
 pub fn main(init: process.Init) void {
     io = init.io;
     gpa = init.arena.allocator();
     environ = init.environ_map;
     const args: []const [:0]const u8 = init.minimal.args.toSlice(gpa) catch @panic("OOM");
+    if (args.len >= 1 and mem.eql(u8, fs.path.basename(args[0]), "objcopy"))
+        return objcopy(args[1..]);
     if (args.len < 2) fatal("usage: kgen command args...", .{});
     const cmd: [:0]const u8 = args[1];
     const a: []const [:0]const u8 = args[2..];
     const eql: fn (comptime type, anytype, anytype) bool = mem.eql;
+    if (eql(u8, cmd, "objcopy")) return objcopy(a);
+    if (eql(u8, cmd, "copy-modules") and a.len >= 2) return copyModules(a[0], a[1], a[2..]);
     if (eql(u8, cmd, "genassym") and a.len == 2) return genassym(a[0], a[1]);
     if (eql(u8, cmd, "genoffset") and a.len == 2) return genoffset(a[0], a[1]);
     if (eql(u8, cmd, "nmdefs") and a.len == 2) return nmdefs(a[0], a[1]);

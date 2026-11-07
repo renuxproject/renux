@@ -78,6 +78,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
             bash coreutils findutils diffutils sed grep gzip bzip2 xz-utils patch debianutils \
+            binutils file \
             libc6-dev linux-libc-dev \
             libarchive-dev libssl-dev zlib1g-dev \
             libarchive-tools
@@ -94,7 +95,7 @@ jobs:
           echo "name=renux-nightly-${MACHINE}-$(date -u +%Y%m%d)-$(git rev-parse --short=10 HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: zig build image iso
-        run: zig build image iso -Dmachine="$MACHINE" --summary failures
+        run: zig build image iso -Dmachine="$MACHINE" -Dmodules=all --summary failures
 
       - name: Compress
         env:

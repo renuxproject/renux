@@ -185,6 +185,8 @@ const Parts: type = struct {
     hints: []const u8,
     efi_boot: []const u8,
     zig: []const u8,
+    /// The flat directory of .ko files, for /boot/modules.
+    modules: []const u8,
 };
 
 /// A list of the root: the world's METALOG, sorted.
@@ -274,6 +276,21 @@ fn addKernel(spec: *std.ArrayList(u8), p: Parts) void {
     entry(spec, "boot/kernel/kernel", "0555", readFile(p.kernel));
 }
 
+/// The kernel modules, flat: /boot/modules.
+fn addModules(spec: *std.ArrayList(u8), p: Parts) void {
+    entry(spec, "boot/modules", "0755", null);
+    var dir: Io.Dir = Io.Dir.cwd().openDir(io, p.modules, .{ .iterate = true }) catch |err|
+        fatal("{s}: {t}", .{ p.modules, err });
+    defer dir.close(io);
+    var it: Io.Dir.Iterator = dir.iterate();
+    while (it.next(io) catch |err| fatal("{s}: {t}", .{ p.modules, err })) |e| {
+        if (e.kind != .file or !mem.endsWith(u8, e.name, ".ko")) continue;
+        const path: []const u8 = fmt.allocPrint(gpa, "boot/modules/{s}", .{e.name}) catch @panic("OOM");
+        const source: []const u8 = fs.path.join(gpa, &.{ p.modules, e.name }) catch @panic("OOM");
+        entry(spec, path, "0555", readFile(source));
+    }
+}
+
 /// An EFI system partition of size bytes, with the loader as the default
 /// boot program; returns its path.
 fn makeEsp(stage: []const u8, p: Parts, size: []const u8, fat: []const u8) []const u8 {
@@ -300,6 +317,7 @@ fn disk(out: []const u8, stage: []const u8, p: Parts, mkimg: []const u8) void {
     addBoot(&spec, p);
     addZig(&spec, p);
     addKernel(&spec, p);
+    addModules(&spec, p);
     // What a disk needs and the world has not.
     entry(&spec, "etc/fstab", "0644", "# Device\tMountpoint\tFStype\tOptions\tDump\tPass#\n/dev/gpt/rootfs\t/\tufs\trw\t1\t1\n");
     entry(&spec, "etc/rc.conf", "0644", "hostname=\"renux\"\n");
@@ -372,6 +390,7 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
     var kernel: std.ArrayList(u8) = .empty;
     kernel.appendSlice(gpa, "#mtree\n") catch @panic("OOM");
     addKernel(&kernel, p);
+    addModules(&kernel, p);
     const kernel_line: []const u8 = distSet(stage, dist, "kernel", root, kernel, "Kernel (MANDATORY)");
 
     // The live system: the world, /boot with the kernel, and the sets.
@@ -380,6 +399,7 @@ fn iso(out: []const u8, stage: []const u8, p: Parts, rc_local: []const u8, insta
     var spec: std.ArrayList(u8) = worldSpec(p);
     addBoot(&spec, p);
     addKernel(&spec, p);
+    addModules(&spec, p);
     entry(&spec, "usr/freebsd-dist", "0755", null);
     entry(&spec, "usr/freebsd-dist/MANIFEST", "0644", mem.concat(gpa, u8, &.{ base_line, kernel_line }) catch @panic("OOM"));
     for ([_][]const u8{ "base.txz", "kernel.txz" }) |set| {
@@ -427,7 +447,7 @@ pub fn main(init: process.Init) void {
     io = init.io;
     gpa = init.arena.allocator();
     const args: []const [:0]const u8 = init.minimal.args.toSlice(gpa) catch @panic("OOM");
-    if (args.len < 14) fatal("usage: image disk|iso OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MKIMG|RCLOCAL INSTALLER", .{});
+    if (args.len < 15) fatal("usage: image disk|iso OUT STAGE MAKEFS DESTDIR KERNEL LOADER LUA DEFAULTS HINTS EFIBOOT ZIG MODULES MKIMG|RCLOCAL INSTALLER", .{});
     const p: Parts = .{
         .makefs = args[4],
         .destdir = args[5],
@@ -438,10 +458,11 @@ pub fn main(init: process.Init) void {
         .hints = absolute(args[10]),
         .efi_boot = args[11],
         .zig = absolute(args[12]),
+        .modules = absolute(args[13]),
     };
     const out: []const u8 = args[2];
     const stage: []const u8 = args[3];
-    if (mem.eql(u8, args[1], "disk")) return disk(out, stage, p, args[13]);
-    if (mem.eql(u8, args[1], "iso") and args.len == 15) return iso(out, stage, p, absolute(args[13]), absolute(args[14]));
+    if (mem.eql(u8, args[1], "disk")) return disk(out, stage, p, args[14]);
+    if (mem.eql(u8, args[1], "iso") and args.len == 16) return iso(out, stage, p, absolute(args[14]), absolute(args[15]));
     fatal("unknown medium {s}", .{args[1]});
 }
