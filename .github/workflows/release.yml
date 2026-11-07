@@ -98,7 +98,19 @@ jobs:
           df -h .
 
       - name: zig build image iso
-        run: zig build image iso -Dmachine="$MACHINE" -Dmodules=all --summary failures
+        id: media
+        run: |
+          set -o pipefail
+          zig build image iso -Dmachine="$MACHINE" -Dmodules=all --summary failures 2>&1 | tee media-build.log
+
+      - name: The failure
+        if: failure()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -120 media-build.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          msg=$(grep -iE 'error:|fatal error|Error code' media-build.log | tail -40 | tr '\n' ' ' | cut -c1-12000 || true)
+          echo "::error title=media build::$msg"
 
       - name: Compress
         env:

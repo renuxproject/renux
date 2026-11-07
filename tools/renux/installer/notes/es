@@ -14,6 +14,11 @@ Qué incluye
     compilan con `zig build` desde el código fuente de Renux, con
     Zig 0.17 como compilador.
   - Renux se basa en FreeBSD 15.1 y sigue su desarrollo.
+  - Los módulos del kernel se compilan e instalan en /boot/modules
+    (854 en amd64), incluidos ZFS y los controladores que FreeBSD
+    distribuye como módulos.
+  - El instalador ofrece Automático (UFS) y Automático (ZFS); ZFS
+    incluye el módulo del kernel, zpool/zfs y el soporte del cargador.
   - Zig es el compilador del sistema: zig, cc y c++ compilan Zig, C y
     C++ desde el primer arranque.
   - El instalador está en inglés, español y portugués, y trae estas
@@ -31,9 +36,8 @@ Qué incluye
 Limitaciones conocidas
 
   - Solo amd64 y UEFI: Renux no arranca por BIOS (CSM, Legacy).
-  - Solo UFS: el kernel aún no tiene módulos, así que no hay ZFS y
-    faltan los controladores que FreeBSD distribuye como módulos
-    (algunas tarjetas Wi-Fi, por ejemplo).
+  - El instalador ofrece Automático (UFS) y Automático (ZFS); el menú de
+    ZFS configura el pool, los datasets y el cifrado opcional.
   - En español y portugués, los nombres de los teclados y de la
     mayoría de las zonas horarias siguen en inglés.
   - El compilador del sistema, Zig 0.17 (con cc, c++, ld, ar y ranlib,
