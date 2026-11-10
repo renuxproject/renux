@@ -85,6 +85,7 @@
 #define	PT_GETREGSET	42	/* Get a target register set */
 #define	PT_SETREGSET	43	/* Set a target register set */
 #define	PT_SC_REMOTE	44	/* Execute a syscall */
+#define	PT_SET_SC_RET	45	/* Set (fake) syscall results */
 
 #define PT_FIRSTMACH    64	/* for machine-specific requests */
 #define	PT_LASTMACH     127
