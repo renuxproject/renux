@@ -758,7 +758,7 @@ const ELFOSABI_FREEBSD: u8 = 9;
 fn objcopy(args: []const [:0]const u8) void {
     var argv: std.ArrayList([]const u8) = .empty;
     // The real objcopy, not this wrapper: it may be first in PATH.
-    argv.append(gpa, "/usr/bin/objcopy") catch @panic("OOM");
+    argv.append(gpa, "") catch @panic("OOM");
     var patch: bool = false;
     var i: usize = 0;
     while (i < args.len) : (i += 1) {
@@ -777,8 +777,18 @@ fn objcopy(args: []const [:0]const u8) void {
             argv.append(gpa, a) catch @panic("OOM");
         }
     }
-    const r: process.RunResult = process.run(gpa, io, .{ .argv = argv.items }) catch |err|
-        fatal("objcopy: {t}", .{err});
+    var ran: bool = false;
+    var r: process.RunResult = undefined;
+    for ([_][]const u8{ "/usr/local/bin/objcopy", "/usr/bin/objcopy" }) |path| {
+        argv.items[0] = path;
+        r = process.run(gpa, io, .{ .argv = argv.items }) catch |err| {
+            if (err == error.FileNotFound) continue;
+            fatal("objcopy: {t}", .{err});
+        };
+        ran = true;
+        break;
+    }
+    if (!ran) fatal("objcopy: not found in /usr/local/bin or /usr/bin", .{});
     if (r.stderr.len > 0) debug.print("{s}", .{r.stderr});
     switch (r.term) {
         .exited => |code| if (code != 0) fatal("objcopy exited with {d}", .{code}),
